@@ -1,5 +1,5 @@
-import { BaseGenerator } from './base-generator';
-import { LocationBlock } from '../core/config-model';
+import { BaseGenerator } from './base-generator.js';
+import { LocationBlock } from '../core/config-model.js';
 
 export class CloudFlareGenerator extends BaseGenerator {
   /**

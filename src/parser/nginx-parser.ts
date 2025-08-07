@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
-import { ParsedNginxConfig } from '../core/config-model';
-import { ConfigTransformer } from '../core/transformer';
-import { parseUCL, isLibUCLAvailable, getLibUCLInfo } from './ucl-tool';
+import { ParsedNginxConfig } from '../core/config-model.js';
+import { ConfigTransformer } from '../core/transformer.js';
+import { parseUCL, isLibUCLAvailable, getLibUCLInfo } from './ucl-tool.js';
 
 export class NginxParser {
   private transformer: ConfigTransformer;

@@ -1,4 +1,4 @@
-import { ParsedNginxConfig, ServerBlock, LocationBlock } from '../core/config-model';
+import { ParsedNginxConfig, ServerBlock, LocationBlock } from '../core/config-model.js';
 
 export abstract class BaseGenerator {
   protected config: ParsedNginxConfig;

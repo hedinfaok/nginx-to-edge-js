@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { NginxParser } from '../parser/nginx-parser';
-import { CloudFlareGenerator } from '../generators/cloudflare';
-import { NextJSGenerator } from '../generators/nextjs-middleware';
-import { ParsedNginxConfig } from '../core/config-model';
+import { NginxParser } from '../parser/nginx-parser.js';
+import { CloudFlareGenerator } from '../generators/cloudflare.js';
+import { NextJSGenerator } from '../generators/nextjs-middleware.js';
+import { ParsedNginxConfig } from '../core/config-model.js';
 import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 
