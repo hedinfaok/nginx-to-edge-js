@@ -1,0 +1,21 @@
+# UCL format nginx configuration  
+server {
+    listen = [80, 443]
+    server_name = "example.com"
+    
+    location = [
+        {
+            path = "/api/"
+            proxy_pass = "http://backend:3000/"
+            proxy_set_header = {
+                Host = "host_value"
+                X-Real-IP = "remote_addr_value"
+            }
+        },
+        {
+            path = "/static/"
+            root = "/var/www/"
+            expires = "1y"
+        }
+    ]
+}
