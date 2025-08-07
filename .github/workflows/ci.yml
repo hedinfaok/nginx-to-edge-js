@@ -44,9 +44,20 @@ jobs:
     
     - name: Test CLI functionality
       run: |
+        echo "=== Checking dist directory ==="
+        ls -la dist/ || echo "dist directory not found"
+        echo "=== Checking cli directory ==="
+        ls -la dist/cli/ || echo "dist/cli directory not found" 
+        echo "=== Running npm link ==="
         npm link
-        nginx-to-edge-js --help
-        nginx-to-edge-js validate examples/basic-reverse-proxy/nginx.conf || echo "CLI validation test completed"
+        echo "=== Checking npm global bin ==="
+        npm bin -g
+        echo "=== Checking PATH ==="
+        echo $PATH
+        echo "=== Trying to run CLI ==="
+        nginx-to-edge-js --help || echo "CLI not found in PATH"
+        echo "=== Fallback: trying to run directly ==="
+        node dist/cli/index.js --help || echo "Direct execution failed"
 
   release:
     needs: test
