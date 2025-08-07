@@ -26,8 +26,8 @@ jobs:
 
     - name: Verify libucl installation
       run: |
-        which ucl_tool
-        ucl_tool -h
+        ls -la /opt/homebrew/Cellar/libucl/*/lib/libucl.dylib
+        echo "libucl FFI integration - no ucl_tool binary needed"
     
     - name: Install dependencies
       run: npm ci
@@ -44,16 +44,14 @@ jobs:
     
     - name: Test CLI functionality
       run: |
-        echo "=== Checking dist directory structure ==="
-        find dist/ -type f -name "*.js" | head -10
-        echo "=== Running npm link ==="
+        echo "=== Testing FFI-based CLI ==="
+        node dist/src/cli/index.js --help
+        echo "=== Testing UCL parsing with FFI ==="
+        node dist/src/cli/index.js parse examples/simple.ucl
+        echo "=== Testing npm link ==="
         npm link
-        echo "=== Checking PATH ==="
-        echo $PATH | tr ':' '\n' | head -5
-        echo "=== Trying to run CLI ==="
+        echo "=== Testing global CLI ==="
         nginx-to-edge-js --help || echo "CLI not found in PATH"
-        echo "=== Fallback: trying to run directly ==="
-        node dist/src/cli/index.js --help || echo "Direct execution failed"
 
   release:
     needs: test
