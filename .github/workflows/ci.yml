@@ -26,7 +26,8 @@ jobs:
 
     - name: Install crossplane
       run: |
-        pip3 install crossplane
+        brew install pipx
+        pipx install crossplane
 
     - name: Verify libucl installation
       run: |
@@ -35,6 +36,7 @@ jobs:
     
     - name: Verify crossplane installation
       run: |
+        pipx list | grep crossplane || echo "crossplane not found in pipx"
         crossplane --version
         echo "crossplane installed successfully"
     
@@ -87,6 +89,11 @@ jobs:
     - name: Install libucl
       run: |
         brew install libucl
+
+    - name: Install crossplane
+      run: |
+        brew install pipx
+        pipx install crossplane
     
     - name: Install dependencies
       run: npm ci
