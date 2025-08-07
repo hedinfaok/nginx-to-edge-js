@@ -1,0 +1,130 @@
+{
+  events: {
+    worker_connections: 1024
+  },
+  http: {
+    default_type: application/octet-stream,
+    server: {
+      listen: [
+        "80"
+      ],
+      server_name: [
+        example.com,
+        www.example.com
+      ],
+      root: /var/www/html,
+      location: [
+        {
+          _name: /,
+          try_files: [
+            $uri,
+            $uri/,
+            "=404"
+          ]
+        },
+        {
+          _name: /api,
+          proxy_pass: http://backend,
+          proxy_set_header: [
+            {
+              _args: [
+                Host,
+                $host
+              ]
+            },
+            {
+              _args: [
+                X-Real-IP,
+                $remote_addr
+              ]
+            },
+            {
+              _args: [
+                X-Forwarded-For,
+                $proxy_add_x_forwarded_for
+              ]
+            }
+          ],
+          proxy_connect_timeout: "30s",
+          proxy_read_timeout: "30s"
+        },
+        {
+          _args: [
+            ~*,
+            \.(css|js|png|jpg|jpeg|gif|ico|svg)$
+          ],
+          expires: "1y",
+          add_header: [
+            Cache-Control,
+            "public, immutable"
+          ]
+        }
+      ],
+      error_page: [
+        "404",
+        /404.html,
+        [
+          "500",
+          "502",
+          "503",
+          "504",
+          /50x.html
+        ]
+      ]
+    },
+    upstream: {
+      _name: backend,
+      server: [
+        {
+          _args: [
+            "127.0.0.1:3000",
+            "weight=3"
+          ]
+        },
+        {
+          _args: [
+            "127.0.0.1:3001",
+            "weight=1"
+          ]
+        },
+        {
+          _args: [
+            "127.0.0.1:3002",
+            backup
+          ]
+        }
+      ]
+    },
+    add_header: [
+      X-Frame-Options,
+      DENY,
+      [
+        X-Content-Type-Options,
+        nosniff
+      ],
+      [
+        X-XSS-Protection,
+        "1; mode=block"
+      ]
+    ],
+    gzip: true,
+    gzip_vary: true,
+    gzip_min_length: 1024,
+    gzip_types: [
+      text/plain,
+      text/css,
+      application/json,
+      application/javascript,
+      text/xml,
+      application/xml
+    ]
+  },
+  _metadata: {
+    source: nginx-to-edge-js,
+    generated: "2025-08-07T15:50:37.281Z",
+    directives: 33,
+    files: [
+      /Users/rob/code/faok/nginx-to-edge-js/test-nginx-converter.conf
+    ]
+  }
+}

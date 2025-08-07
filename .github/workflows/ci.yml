@@ -24,10 +24,19 @@ jobs:
       run: |
         brew install libucl
 
+    - name: Install crossplane
+      run: |
+        pip3 install crossplane
+
     - name: Verify libucl installation
       run: |
         ls -la /opt/homebrew/Cellar/libucl/*/lib/libucl.dylib
         echo "libucl FFI integration - no ucl_tool binary needed"
+    
+    - name: Verify crossplane installation
+      run: |
+        crossplane --version
+        echo "crossplane installed successfully"
     
     - name: Install dependencies
       run: npm ci
@@ -44,10 +53,16 @@ jobs:
     
     - name: Test CLI functionality
       run: |
-        echo "=== Testing FFI-based CLI ==="
+        echo "=== Testing Unified CLI ==="
         node dist/src/cli/index.js --help
         echo "=== Testing UCL parsing with FFI ==="
         node dist/src/cli/index.js parse examples/simple.ucl
+        echo "=== Testing system dependencies ==="
+        node dist/src/cli/index.js check
+        echo "=== Testing nginx-to-UCL conversion ==="
+        node dist/src/cli/index.js preview examples/basic-reverse-proxy/nginx.conf
+        echo "=== Testing system integration ==="
+        node dist/src/cli/index.js test
         echo "=== Testing npm link ==="
         npm link
         echo "=== Testing global CLI ==="

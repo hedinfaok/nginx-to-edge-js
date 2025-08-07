@@ -1,0 +1,30 @@
+{
+  events: {
+    worker_connections: 1024
+  },
+  http: {
+    server: {
+      listen: [
+        "80"
+      ],
+      server_name: [
+        example.com
+      ],
+      location: {
+        _name: /,
+        return: {
+          code: 301,
+          url: https://$server_name$request_uri
+        }
+      }
+    }
+  },
+  _metadata: {
+    source: nginx-to-edge-js,
+    generated: "2025-08-07T15:44:08.359Z",
+    directives: 8,
+    files: [
+      test-nginx.conf
+    ]
+  }
+}
