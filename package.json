@@ -2,10 +2,10 @@
   "name": "nginx-to-edge-js",
   "version": "1.0.0",
   "description": "A powerful tool that translates nginx.conf files (in UCL format) to JSON and generates edge server configurations",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "type": "module",
   "bin": {
-    "nginx-to-edge-js": "./dist/cli/index.js"
+    "nginx-to-edge-js": "./dist/src/cli/index.js"
   },
   "scripts": {
     "build": "tsc",
