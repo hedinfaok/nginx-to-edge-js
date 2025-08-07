@@ -12,7 +12,7 @@ jobs:
     
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [macos-latest]
         node-version: [18.x, 20.x]
     
     steps:
@@ -25,21 +25,14 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     
-    - name: Install libucl (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libucl-dev ucl-utils
-    
-    - name: Install libucl (macOS)
-      if: matrix.os == 'macos-latest'
+    - name: Install libucl
       run: |
         brew install libucl
-    
+
     - name: Verify libucl installation
       run: |
-        which ucl_tool || echo "ucl_tool not found in PATH"
-        ucl_tool -h || echo "ucl_tool help failed"
+        which ucl_tool
+        ucl_tool -h
     
     - name: Install dependencies
       run: npm ci
@@ -62,7 +55,7 @@ jobs:
 
   release:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
@@ -78,8 +71,7 @@ jobs:
     
     - name: Install libucl
       run: |
-        sudo apt-get update
-        sudo apt-get install -y libucl-dev ucl-utils
+        brew install libucl
     
     - name: Install dependencies
       run: npm ci
