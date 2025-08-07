@@ -142,12 +142,18 @@ export class NginxParser {
    * Parse nginx configuration from string content
    */
   async parseString(content: string, options: NginxParserOptions = {}): Promise<NginxParseResult> {
-    // Create temporary file for parsing
-    const tmpFile = path.join(process.cwd(), '.tmp_nginx_config');
+    // Create temporary file for parsing with better uniqueness
+    const tmpFile = path.join(process.cwd(), `.tmp_nginx_config_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     
     try {
       const fs = await import('fs/promises');
       await fs.writeFile(tmpFile, content, 'utf8');
+      
+      // Verify file was written successfully
+      const stats = await fs.stat(tmpFile);
+      if (!stats.isFile()) {
+        throw new Error('Failed to create temporary configuration file');
+      }
       
       const result = await this.parseConfig(tmpFile, options);
       
