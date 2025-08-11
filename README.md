@@ -199,25 +199,6 @@ ls -la output/
 
 ## nginx Parsing Features
 
-# Static site with redirects
-examples/static-site-with-redirects/nginx.conf
-```
-
-### 🚀 Edge Server Generation
-
-```bash
-# Generate CloudFlare Worker from nginx config
-npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
-
-# Generate Next.js middleware from nginx config  
-npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
-
-# Custom output path
-npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf --output my-worker.js
-```
-
-## nginx Parsing Features
-
 ### Supported nginx Directives
 
 ✅ **Core Directives**: `listen`, `server_name`, `root`, `index`  
