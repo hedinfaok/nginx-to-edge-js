@@ -33,21 +33,7 @@ jobs:
       run: |
         crossplane --version
         echo "crossplane installed successfully"
-          pipx install crossplane
-          echo "crossplane installed via pipx"
-        else
-          # Fallback to pip3 with user install
-          pip3 install --user crossplane
-          echo "crossplane installed via pip3 --user"
-          # Add user bin to PATH
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-        fi
 
-    - name: Verify libucl installation
-      run: |
-        # Check for FreeBSD libucl installation
-        find /usr/local -name "libucl.so*" 2>/dev/null | head -5
-    
     - name: Install dependencies
       run: npm ci
     
