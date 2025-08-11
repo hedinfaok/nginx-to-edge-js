@@ -24,9 +24,20 @@ jobs:
       run: |
         sudo apt-get update
 
-    - name: Install libucl
+    - name: Install libucl (FreeBSD version from source)
       run: |
-        sudo apt-get install -y libucl-dev
+        sudo apt-get install -y build-essential cmake git autotools-dev autoconf libtool pkg-config
+        # Clone and build FreeBSD libucl from source
+        git clone https://github.com/vstakhov/libucl.git /tmp/libucl
+        cd /tmp/libucl
+        ./autogen.sh
+        ./configure --prefix=/usr/local
+        make
+        sudo make install
+        sudo ldconfig
+        # Verify installation
+        ls -la /usr/local/lib/libucl*
+        echo "FreeBSD libucl installed successfully"
 
     - name: Install Python and pip
       run: |
@@ -49,10 +60,18 @@ jobs:
 
     - name: Verify libucl installation
       run: |
-        # Check common libucl locations on Ubuntu
-        find /usr -name "libucl.so*" 2>/dev/null | head -5
-        ls -la /usr/lib/x86_64-linux-gnu/libucl.so* || echo "libucl not found in expected location"
-        echo "libucl FFI integration - no ucl_tool binary needed"
+        # Check for FreeBSD libucl installation
+        find /usr/local -name "libucl.so*" 2>/dev/null | head -5
+        ls -la /usr/local/lib/libucl* || echo "FreeBSD libucl not found in /usr/local/lib"
+        echo "=== Checking FreeBSD libucl symbols ==="
+        nm -D /usr/local/lib/libucl.so.1 2>/dev/null | grep ucl_parser || echo "Checking libucl.so..."
+        nm -D /usr/local/lib/libucl.so 2>/dev/null | grep ucl_parser || echo "No ucl_parser symbols found"
+        echo "=== Checking all UCL symbols ==="
+        nm -D /usr/local/lib/libucl.so 2>/dev/null | grep ucl | head -10 || echo "No symbols found"
+        echo "=== Checking library info ==="
+        file /usr/local/lib/libucl.so*
+        ldd /usr/local/lib/libucl.so* || echo "ldd failed"
+        echo "FreeBSD libucl FFI integration - ucl_parser functions available"
     
     - name: Verify crossplane installation
       run: |
@@ -117,9 +136,20 @@ jobs:
       run: |
         sudo apt-get update
 
-    - name: Install libucl
+    - name: Install libucl (FreeBSD version from source)
       run: |
-        sudo apt-get install -y libucl-dev
+        sudo apt-get install -y build-essential cmake git autotools-dev autoconf libtool pkg-config
+        # Clone and build FreeBSD libucl from source
+        git clone https://github.com/vstakhov/libucl.git /tmp/libucl
+        cd /tmp/libucl
+        ./autogen.sh
+        ./configure --prefix=/usr/local
+        make
+        sudo make install
+        sudo ldconfig
+        # Verify installation
+        ls -la /usr/local/lib/libucl*
+        echo "FreeBSD libucl installed successfully"
 
     - name: Install Python and pip
       run: |
