@@ -1,6 +1,9 @@
-name: CI
+name: CI - macOS
 
 on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6 AM UTC
   push:
     branches: [ main, develop ]
     paths:
@@ -23,12 +26,11 @@ on:
       - '.github/workflows/**'
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
+  test-macos:
+    runs-on: macos-latest
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
-        node-version: ['18.x', '20.x', '22.x']
+        node-version: ['20.x']  # Single version for macOS compatibility testing
     
     steps:
     - name: Checkout code
@@ -93,7 +95,7 @@ jobs:
         nginx-to-edge-js --help || echo "CLI not found in PATH"
 
   release:
-    needs: test
+    needs: test-macos
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
