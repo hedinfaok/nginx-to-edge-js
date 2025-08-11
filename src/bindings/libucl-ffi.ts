@@ -25,6 +25,9 @@ const getLibraryPath = (): string => {
     '/opt/homebrew/lib/libucl.dylib',
     '/opt/homebrew/Cellar/libucl/*/lib/libucl.dylib',
     '/usr/local/lib/libucl.dylib',
+    '/usr/lib/x86_64-linux-gnu/libucl.so',  // Ubuntu/Debian x86_64
+    '/usr/lib/aarch64-linux-gnu/libucl.so', // Ubuntu/Debian ARM64
+    '/usr/lib64/libucl.so',                  // CentOS/RHEL/Fedora
     '/usr/lib/libucl.so',
     '/usr/local/lib/libucl.so'
   ];
