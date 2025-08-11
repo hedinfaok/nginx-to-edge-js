@@ -121,7 +121,7 @@
   },
   _metadata: {
     source: nginx-to-edge-js,
-    generated: "2025-08-11T02:56:30.893Z",
+    generated: "2025-08-11T15:53:21.850Z",
     directives: 33,
     files: [
       /Users/rob/code/faok/nginx-to-edge-js/test-nginx-converter.conf

@@ -2,39 +2,36 @@
 
 ## Overview
 
-The nginx-to-edge-js project is designed as a modular system for parsing nginx configurations in UCL format and transforming them into modern edge server configurations. The architecture follows a clear separation of concerns with distinct layers for parsing, transformation, and generation.
+The nginx-to-edge-js project is designed as a modular system using nginx Inc.'s official crossplane parser for parsing nginx configurations and transforming them into modern edge server configurations. The architecture follows a clear separation of concerns with distinct layers for parsing, transformation, and generation.
 
 ## Architecture Diagram
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   nginx.conf    │    │      JSON       │    │  Edge Configs   │
-│   (UCL format)  │───▶│  Configuration  │───▶│   (JS/TS/etc)   │
+│ (standard fmt)  │───▶│  Configuration  │───▶│   (JS/TS/etc)   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
         │                        │                        │
         ▼                        ▼                        ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     Parser      │    │   Transformer   │    │   Generators    │
-│   - UCL Lexer   │    │  - Validation   │    │  - CloudFlare   │
-│   - AST Builder │    │  - Mapping      │    │  - Lambda@Edge  │
-│   - Validator   │    │  - Enrichment   │    │  - Next.js      │
+│   crossplane    │    │   Transformer   │    │   Generators    │
+│  nginx parser   │    │  - Validation   │    │  - CloudFlare   │
+│ (nginx Inc.)    │    │  - Mapping      │    │  - Lambda@Edge  │
+│                 │    │  - Enrichment   │    │  - Next.js      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ## Core Components
 
-### 1. Parser Layer (`src/parser/`)
+### 1. Parser Layer (`src/converters/`)
 
-**NginxParser** (`nginx-parser.ts`)
-- Main entry point for parsing nginx configurations
-- Integrates with libucl for UCL parsing
-- Handles nginx-specific syntax preprocessing
-- Provides validation and error reporting
-
-**UCL Integration**
-- Uses libucl for robust UCL format parsing
-- Falls back to basic parser if libucl is unavailable
-- Handles nginx variables and syntax quirks
+**crossplane Parser** (`src/converters/nginx-parser.ts`)
+- Uses nginx Inc.'s official crossplane Python library
+- Provides 100% nginx syntax compatibility
+- Handles all nginx directives and contexts correctly
+- Production-proven parser used by nginx Amplify
+- Spawns crossplane subprocess for parsing
+- Comprehensive error handling with line numbers
 
 ### 2. Core Model (`src/core/`)
 
@@ -44,7 +41,7 @@ The nginx-to-edge-js project is designed as a modular system for parsing nginx c
 - Supports all major nginx directives and contexts
 
 **Transformer** (`transformer.ts`)
-- Converts raw UCL objects to structured configuration model
+- Converts crossplane JSON output to structured configuration model
 - Handles complex nginx directive parsing
 - Normalizes configuration data for generators
 
@@ -81,14 +78,13 @@ The nginx-to-edge-js project is designed as a modular system for parsing nginx c
 
 ### 1. Parsing Phase
 ```
-nginx.conf → UCL Parser → Raw Object → Transformer → Structured Config
+nginx.conf → crossplane → JSON → Transformer → Structured Config
 ```
 
 1. nginx configuration is read from file
-2. Preprocessed to handle nginx-specific syntax
-3. Parsed using libucl into raw object structure
-4. Transformed into typed configuration model
-5. Validated for completeness and correctness
+2. Parsed using crossplane (nginx Inc.'s official parser) for maximum compatibility
+3. JSON output transformed into typed configuration model
+4. Validated for completeness and correctness
 
 ### 2. Generation Phase
 ```

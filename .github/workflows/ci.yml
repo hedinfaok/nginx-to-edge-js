@@ -8,7 +8,11 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        node-version: ['18.x', '20.x']
     
     steps:
     - name: Checkout code
@@ -17,26 +21,20 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
     
-    - name: Install libucl
-      run: |
-        brew install libucl
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
     - name: Install crossplane
       run: |
-        brew install pipx
-        pipx install crossplane
+        pip install crossplane
 
-    - name: Verify libucl installation
-      run: |
-        ls -la /opt/homebrew/Cellar/libucl/*/lib/libucl.dylib
-        echo "libucl FFI integration - no ucl_tool binary needed"
-    
     - name: Verify crossplane installation
       run: |
-        pipx list | grep crossplane || echo "crossplane not found in pipx"
         crossplane --version
         echo "crossplane installed successfully"
     
@@ -55,16 +53,24 @@ jobs:
     
     - name: Test CLI functionality
       run: |
-        echo "=== Testing Unified CLI ==="
+        echo "=== Testing Simplified CLI ==="
         node dist/src/cli/index.js --help
-        echo "=== Testing UCL parsing with FFI ==="
-        node dist/src/cli/index.js parse examples/simple.ucl
         echo "=== Testing system dependencies ==="
         node dist/src/cli/index.js check
-        echo "=== Testing nginx-to-UCL conversion ==="
-        node dist/src/cli/index.js preview examples/basic-reverse-proxy/nginx.conf
-        echo "=== Testing system integration ==="
+        echo "=== Testing crossplane integration ==="
         node dist/src/cli/index.js test
+        echo "=== Testing nginx parsing ==="
+        node dist/src/cli/index.js parse examples/basic-reverse-proxy/nginx.conf
+        echo "=== Testing nginx validation ==="
+        node dist/src/cli/index.js validate examples/basic-reverse-proxy/nginx.conf
+        echo "=== Testing CloudFlare Workers generation ==="
+        node dist/src/cli/index.js generate cloudflare examples/basic-reverse-proxy/nginx.conf --output test-worker.js
+        echo "=== Testing Next.js middleware generation ==="
+        node dist/src/cli/index.js generate nextjs examples/basic-reverse-proxy/nginx.conf --output test-middleware.ts
+        echo "=== Testing all platforms generation ==="
+        node dist/src/cli/index.js generate all examples/basic-reverse-proxy/nginx.conf --output-dir test-output
+        echo "=== Verifying generated files ==="
+        ls -la test-worker.js test-middleware.ts test-output/
         echo "=== Testing npm link ==="
         npm link
         echo "=== Testing global CLI ==="
@@ -72,7 +78,7 @@ jobs:
 
   release:
     needs: test
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
@@ -86,14 +92,14 @@ jobs:
         cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
     
-    - name: Install libucl
-      run: |
-        brew install libucl
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
     - name: Install crossplane
       run: |
-        brew install pipx
-        pipx install crossplane
+        pip install crossplane
     
     - name: Install dependencies
       run: npm ci

@@ -4,7 +4,7 @@
 
 Before installing nginx-to-edge-js, ensure you have the following installed:
 
-### 1. Node.js and npm
+### 1. Node.js and npm (Required)
 
 **macOS (using Homebrew):**
 ```bash
@@ -27,23 +27,23 @@ curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -
 sudo yum install -y nodejs npm
 ```
 
-### 2. libucl (Optional - for production use)
+### 2. crossplane (Required)
 
-The project currently uses a mock UCL parser for development. For production use with real UCL parsing:
-
-**macOS:**
+**Install via pip (Recommended):**
 ```bash
-brew install libucl
+pip install crossplane
+# or
+pip3 install crossplane
 ```
 
-**Linux (Ubuntu/Debian):**
+**Install via pipx (Isolated):**
 ```bash
-sudo apt-get install libucl-dev
+pipx install crossplane
 ```
 
-**Linux (CentOS/RHEL):**
+**Verify installation:**
 ```bash
-sudo yum install libucl-devel
+crossplane --version
 ```
 
 ## Installation

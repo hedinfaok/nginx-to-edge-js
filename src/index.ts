@@ -1,5 +1,9 @@
 // Main exports for the nginx-to-edge-js library
-export { NginxParser } from './parser/nginx-parser';
+
+// Primary parser (crossplane-based, nginx Inc. official parser)
+export { NginxParser } from '../src/converters/nginx-parser';
+
+// Core components
 export { ConfigTransformer } from './core/transformer';
 export { BaseGenerator } from './generators/base-generator';
 export { CloudFlareGenerator } from './generators/cloudflare';

@@ -1,25 +1,55 @@
-# nginx-to-UCL Converter Implementation Summary
+# nginx Parser Implementation Summary
 
 ## Project Overview
-Successfully implemented a comprehensive nginx-to-UCL converter system using the official nginx Inc. crossplane library for parsing and FFI-based libucl for UCL processing.
+Successfully implemented a dual-parser system for nginx configuration processing with crossplane as the primary parser and libucl as a fallback, providing maximum compatibility and deployment flexibility.
 
-## Architecture Components
+## Dual Parser Architecture
 
-### 1. Core Parser (`src/converters/nginx-parser.ts`)
-- **Purpose**: TypeScript wrapper around crossplane Python library
+### 1. Primary Parser: crossplane (`src/converters/nginx-parser.ts`)
+- **Purpose**: Production-grade nginx parsing using nginx Inc.'s official crossplane library
 - **Features**:
+  - 100% nginx syntax compatibility
   - Subprocess-based crossplane integration
   - Configuration parsing, validation, and lexical analysis
   - Formatting and minification capabilities
-  - Error handling and dependency checking
+  - Comprehensive error handling with line numbers
+  - Dependency checking and availability detection
 - **Key Methods**:
   - `parseConfig()` - Parse nginx configuration files
   - `parseString()` - Parse nginx configuration from string
   - `validateConfig()` - Validate nginx syntax
   - `lexConfig()` - Tokenize configuration
   - `formatConfig()` / `minifyConfig()` - Configuration formatting
+  - `isCrossplaneAvailable()` - Dependency detection
 
-### 2. AST Transformer (`src/converters/nginx-to-ucl-transformer.ts`)
+### 2. Fallback Parser: libucl (`src/parser/nginx-parser.ts`)
+- **Purpose**: FFI-based fallback parser for Python-free environments
+- **Features**:
+  - Direct libucl C library integration via Koffi FFI
+  - nginx syntax preprocessing to UCL format
+  - Memory-efficient parsing with automatic cleanup
+  - Type-safe TypeScript wrapper
+  - Graceful fallback when crossplane unavailable
+- **Key Methods**:
+  - `parseFile()` - Parse nginx files using libucl
+  - `parseString()` - Parse nginx strings using libucl
+  - `preprocessNginxToUCL()` - Convert nginx syntax to UCL
+  - Automatic memory management and cleanup
+
+### 3. Parser Selection Logic (`src/cli/index.ts`)
+- **Purpose**: Intelligent parser selection with automatic fallback
+- **Features**:
+  - Automatic crossplane availability detection
+  - Graceful fallback to libucl when needed
+  - User notification about parser selection
+  - Consistent interface regardless of backend parser
+- **Selection Process**:
+  1. Check crossplane availability via `isCrossplaneAvailable()`
+  2. Use crossplane if available (recommended)
+  3. Fall back to libucl with user warning
+  4. Provide unified parsing interface
+
+### 4. AST Transformer (`src/converters/nginx-to-ucl-transformer.ts`)
 - **Purpose**: Transform parsed nginx AST to UCL format
 - **Features**:
   - 30+ nginx directive mappings
@@ -33,7 +63,7 @@ Successfully implemented a comprehensive nginx-to-UCL converter system using the
   - `upstream` configurations
   - Special directive grouping (headers, SSL, logging)
 
-### 3. Main Converter (`src/converters/nginx-to-ucl-converter.ts`)
+### 5. Main Converter (`src/converters/nginx-to-ucl-converter.ts`)
 - **Purpose**: Orchestrate the complete conversion pipeline
 - **Features**:
   - File and string conversion

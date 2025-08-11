@@ -20,34 +20,19 @@ jobs:
         node-version: '20.x'
         cache: 'npm'
     
-    - name: Update package lists
-      run: |
-        sudo apt-get update
-
-    - name: Install libucl (FreeBSD version from source)
-      run: |
-        sudo apt-get install -y build-essential cmake git autotools-dev autoconf libtool pkg-config
-        # Clone and build FreeBSD libucl from source
-        git clone https://github.com/vstakhov/libucl.git /tmp/libucl
-        cd /tmp/libucl
-        ./autogen.sh
-        ./configure --prefix=/usr/local
-        make
-        sudo make install
-        sudo ldconfig
-        # Verify installation
-        ls -la /usr/local/lib/libucl*
-        echo "FreeBSD libucl installed successfully"
-
-    - name: Install Python and pip
-      run: |
-        sudo apt-get install -y python3 python3-pip python3-venv
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
     - name: Install crossplane
       run: |
-        # Try pipx first (recommended approach)
-        sudo apt-get install -y pipx || true
-        if command -v pipx >/dev/null 2>&1; then
+        pip install crossplane
+
+    - name: Verify crossplane installation
+      run: |
+        crossplane --version
+        echo "crossplane installed successfully"
           pipx install crossplane
           echo "crossplane installed via pipx"
         else
@@ -62,24 +47,6 @@ jobs:
       run: |
         # Check for FreeBSD libucl installation
         find /usr/local -name "libucl.so*" 2>/dev/null | head -5
-        ls -la /usr/local/lib/libucl* || echo "FreeBSD libucl not found in /usr/local/lib"
-        echo "=== Checking FreeBSD libucl symbols ==="
-        nm -D /usr/local/lib/libucl.so.1 2>/dev/null | grep ucl_parser || echo "Checking libucl.so..."
-        nm -D /usr/local/lib/libucl.so 2>/dev/null | grep ucl_parser || echo "No ucl_parser symbols found"
-        echo "=== Checking all UCL symbols ==="
-        nm -D /usr/local/lib/libucl.so 2>/dev/null | grep ucl | head -10 || echo "No symbols found"
-        echo "=== Checking library info ==="
-        file /usr/local/lib/libucl.so*
-        ldd /usr/local/lib/libucl.so* || echo "ldd failed"
-        echo "FreeBSD libucl FFI integration - ucl_parser functions available"
-    
-    - name: Verify crossplane installation
-      run: |
-        # Ensure crossplane is in PATH
-        export PATH="$HOME/.local/bin:$PATH"
-        which crossplane || echo "crossplane not found in PATH"
-        crossplane --version
-        echo "crossplane installed successfully on Ubuntu"
     
     - name: Install dependencies
       run: npm ci
@@ -88,25 +55,28 @@ jobs:
       run: npm run build
     
     - name: Run tests
-      run: |
-        # Ensure crossplane is available for tests
-        export PATH="$HOME/.local/bin:$PATH"
-        npm test
+      run: npm test
     
     - name: Test CLI functionality
       run: |
-        # Ensure crossplane is available for CLI tests
-        export PATH="$HOME/.local/bin:$PATH"
-        echo "=== Testing Unified CLI on Ubuntu ==="
+        echo "=== Testing Simplified CLI on Ubuntu ==="
         node dist/src/cli/index.js --help
-        echo "=== Testing UCL parsing with FFI ==="
-        node dist/src/cli/index.js parse examples/simple.ucl
         echo "=== Testing system dependencies ==="
         node dist/src/cli/index.js check
-        echo "=== Testing nginx-to-UCL conversion ==="
-        node dist/src/cli/index.js preview examples/basic-reverse-proxy/nginx.conf
-        echo "=== Testing system integration ==="
+        echo "=== Testing crossplane integration ==="
         node dist/src/cli/index.js test
+        echo "=== Testing nginx parsing ==="
+        node dist/src/cli/index.js parse examples/basic-reverse-proxy/nginx.conf
+        echo "=== Testing nginx validation ==="
+        node dist/src/cli/index.js validate examples/basic-reverse-proxy/nginx.conf
+        echo "=== Testing CloudFlare Workers generation ==="
+        node dist/src/cli/index.js generate cloudflare examples/basic-reverse-proxy/nginx.conf --output test-worker.js
+        echo "=== Testing Next.js middleware generation ==="
+        node dist/src/cli/index.js generate nextjs examples/basic-reverse-proxy/nginx.conf --output test-middleware.ts
+        echo "=== Testing all platforms generation ==="
+        node dist/src/cli/index.js generate all examples/basic-reverse-proxy/nginx.conf --output-dir test-output
+        echo "=== Verifying generated files ==="
+        ls -la test-worker.js test-middleware.ts test-output/
         echo "=== Testing npm link ==="
         npm link
         echo "=== Testing global CLI ==="
@@ -128,40 +98,14 @@ jobs:
         cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
     
-    - name: Update package lists
-      run: |
-        sudo apt-get update
-
-    - name: Install libucl (FreeBSD version from source)
-      run: |
-        sudo apt-get install -y build-essential cmake git autotools-dev autoconf libtool pkg-config
-        # Clone and build FreeBSD libucl from source
-        git clone https://github.com/vstakhov/libucl.git /tmp/libucl
-        cd /tmp/libucl
-        ./autogen.sh
-        ./configure --prefix=/usr/local
-        make
-        sudo make install
-        sudo ldconfig
-        # Verify installation
-        ls -la /usr/local/lib/libucl*
-        echo "FreeBSD libucl installed successfully"
-
-    - name: Install Python and pip
-      run: |
-        sudo apt-get install -y python3 python3-pip python3-venv
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
     - name: Install crossplane
       run: |
-        # Try pipx first (recommended approach)
-        sudo apt-get install -y pipx || true
-        if command -v pipx >/dev/null 2>&1; then
-          pipx install crossplane
-        else
-          # Fallback to pip3 with user install
-          pip3 install --user crossplane
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-        fi
+        pip install crossplane
     
     - name: Install dependencies
       run: npm ci
@@ -170,10 +114,7 @@ jobs:
       run: npm run build
     
     - name: Run tests
-      run: |
-        # Ensure crossplane is available for tests
-        export PATH="$HOME/.local/bin:$PATH"
-        npm test
+      run: npm test
     
     # Note: Publishing step would be the same as macOS workflow
     # Uncomment when ready to publish to npm

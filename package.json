@@ -1,7 +1,7 @@
 {
   "name": "nginx-to-edge-js",
   "version": "1.0.0",
-  "description": "A powerful tool that translates nginx.conf files (in UCL format) to JSON and generates edge server configurations",
+  "description": "A powerful tool that translates nginx.conf files to JSON using crossplane and generates edge server configurations",
   "main": "dist/src/index.js",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
   },
   "keywords": [
     "nginx",
-    "ucl",
+    "crossplane",
     "json",
     "cloudflare",
     "lambda-edge",
@@ -30,8 +30,7 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "commander": "^14.0.0",
-    "koffi": "^2.12.4"
+    "commander": "^14.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
