@@ -6,8 +6,7 @@
  */
 
 import { spawn } from 'child_process';
-import { promisify } from 'util';
-import { access, readFile } from 'fs/promises';
+import { access } from 'fs/promises';
 import * as path from 'path';
 
 export interface NginxParseErrorData {
@@ -74,7 +73,7 @@ export class NginxParser {
     try {
       const result = await this.runCrossplane(['--version']);
       return result.includes('crossplane');
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -86,7 +85,7 @@ export class NginxParser {
     // Verify file exists
     try {
       await access(configPath);
-    } catch (error) {
+    } catch {
       throw new NginxParseError(`Configuration file not found: ${configPath}`);
     }
 
@@ -166,7 +165,9 @@ export class NginxParser {
       try {
         const fs = await import('fs/promises');
         await fs.unlink(tmpFile);
-      } catch {}
+      } catch {
+        // Ignore cleanup errors
+      }
       
       throw error;
     }

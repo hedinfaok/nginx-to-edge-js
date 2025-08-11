@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { nginxParser } from '../converters/nginx-parser.js';
 import { CloudFlareGenerator } from '../generators/cloudflare.js';
 import { NextJSGenerator } from '../generators/nextjs-middleware.js';
-import { ParsedNginxConfig, NginxConfig, ServerBlock, LocationBlock, ListenDirective } from '../core/config-model.js';
+import { ParsedNginxConfig, NginxConfig, ServerBlock, LocationBlock } from '../core/config-model.js';
 import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 
@@ -86,17 +86,19 @@ function convertServerBlock(directive: any): ServerBlock {
   if (directive.block) {
     for (const serverDirective of directive.block) {
       switch (serverDirective.directive) {
-        case 'listen':
+        case 'listen': {
           const port = parseInt(serverDirective.args[0] || '80', 10);
           server.listen.push({ port });
           break;
+        }
         case 'server_name':
           server.server_name = serverDirective.args;
           break;
-        case 'location':
+        case 'location': {
           const location = convertLocationBlock(serverDirective);
           server.locations.push(location);
           break;
+        }
       }
     }
   }
