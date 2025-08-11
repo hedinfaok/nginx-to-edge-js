@@ -31,14 +31,49 @@ jobs:
       run: |
         dnf groupinstall -y "Development Tools"
         dnf install -y cmake autoconf automake libtool pkgconfig
+        # Try to get a newer autoconf if available from EPEL
+        dnf install -y epel-release || true
+        dnf --enablerepo=epel install -y autoconf || true
+        autoconf --version
 
     - name: Install libucl (FreeBSD version from source)
       run: |
-        # Clone and build FreeBSD libucl from source (same as Ubuntu)
-        git clone https://github.com/vstakhov/libucl.git /tmp/libucl
-        cd /tmp/libucl
-        ./autogen.sh
-        ./configure --prefix=/usr/local
+        # Try to download and build a stable release first
+        cd /tmp
+        
+        # Try stable release 0.8.2 first (has pre-generated configure)
+        if wget -q https://github.com/vstakhov/libucl/archive/refs/tags/0.8.2.tar.gz; then
+          echo "Using stable release 0.8.2"
+          tar -xzf 0.8.2.tar.gz
+          cd libucl-0.8.2
+          # Check if configure exists
+          if [ -f configure ]; then
+            ./configure --prefix=/usr/local
+          else
+            # Fall back to autogen if needed
+            autoconf --version
+            ./autogen.sh
+            ./configure --prefix=/usr/local
+          fi
+        else
+          echo "Falling back to git clone"
+          # Clone and build FreeBSD libucl from source (same as Ubuntu)
+          git clone https://github.com/vstakhov/libucl.git /tmp/libucl
+          cd /tmp/libucl
+          
+          # For AlmaLinux 9, we need to handle the autoconf version requirement
+          autoconf --version || echo "Autoconf version check"
+          
+          # Try to generate configure script directly if autogen.sh fails
+          if ! ./autogen.sh; then
+            echo "autogen.sh failed, trying manual approach..."
+            # Generate configure script manually
+            autoreconf -fiv || aclocal
+          fi
+          
+          ./configure --prefix=/usr/local
+        fi
+        
         make
         make install
         ldconfig
