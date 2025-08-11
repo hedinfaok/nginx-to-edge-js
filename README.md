@@ -1,7 +1,7 @@
 # nginx-to-edge-js
 
 [![CI](https://github.com/hedinfaok/nginx-to-edge-js/workflows/CI/badge.svg)](https://github.com/hedinfaok/nginx-to-edge-js/actions)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![Node.js Version](https://.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A powerful tool that converts nginx configurations to modern edge server platforms using nginx Inc.'s official crossplane parser.
@@ -156,48 +156,8 @@ npm run cli --help
 The `examples/` directory contains sample nginx configurations:
 
 ```bash
-```bash
 # Basic reverse proxy
 examples/basic-reverse-proxy/nginx.conf
-
-# Load balancer setup  
-examples/load-balancer/nginx.conf
-
-# Static site with redirects
-examples/static-site-with-redirects/nginx.conf
-```
-
-### 🚀 Edge Server Generation
-
-```bash
-# Generate CloudFlare Worker from nginx config
-npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
-
-# Generate Next.js middleware from nginx config  
-npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
-```
-```
-
-### � Example Configurations
-
-```bash
-# Generate CloudFlare Worker from nginx config
-npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
-
-# Preview conversion without saving
-nginx-to-edge-js preview nginx.conf
-
-# Batch convert multiple files
-nginx-to-edge-js batch-convert *.conf -d ./output/
-
-# Get configuration statistics
-nginx-to-edge-js stats nginx.conf
-
-# Generate with custom output path
-npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf --output my-worker.js
-```
-
-## Complete Workflow Example
 
 # Load balancer setup  
 examples/load-balancer/nginx.conf
@@ -219,6 +179,9 @@ npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf --output my-worker.js
 ```
 
+### � Example Configurations
+
+```bash
 ## Complete Workflow Example
 
 ```bash
@@ -232,6 +195,25 @@ npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 ls -la output/
 # worker.js        (CloudFlare Worker)
 # middleware.ts    (Next.js Middleware)
+```
+
+## nginx Parsing Features
+
+# Static site with redirects
+examples/static-site-with-redirects/nginx.conf
+```
+
+### 🚀 Edge Server Generation
+
+```bash
+# Generate CloudFlare Worker from nginx config
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
+
+# Generate Next.js middleware from nginx config  
+npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
+
+# Custom output path
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf --output my-worker.js
 ```
 
 ## nginx Parsing Features
@@ -312,6 +294,11 @@ npm test -- --grep "generator"
 - **nginx parsing tests** - Configuration parsing validation
 - **Edge generator tests** - CloudFlare and Next.js output validation
 - **Error handling tests** - Comprehensive error scenarios
+
+### Development Scripts
+
+```bash
+# Start development server
 npm run dev
 
 # Build for production
@@ -413,8 +400,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **nginx Inc.** - For the official crossplane library
 - **CloudFlare** - For the Workers platform
 - **Vercel** - For Next.js and edge middleware capabilities
-- [x] Comprehensive test suite
-- [x] Memory-efficient parsing with automatic cleanup
+- **nginx community** - For comprehensive documentation and configuration standards
+- **TypeScript community** - For robust typing and tooling ecosystem
+
+## Roadmap
 
 ### Version 1.1
 - [ ] AWS Lambda@Edge generator
@@ -433,16 +422,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Performance analytics and insights
 - [ ] Multi-format input support (Apache, Caddy)
 - [ ] Distributed configuration management
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- **nginx Inc.** - For the official crossplane library
-- **CloudFlare** - For the Workers platform
-- **Vercel** - For Next.js and edge middleware capabilities
-- **nginx community** - For comprehensive documentation and configuration standards
-- **TypeScript community** - For robust typing and tooling ecosystem
 
