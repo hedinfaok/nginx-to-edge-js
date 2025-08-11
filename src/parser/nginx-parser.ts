@@ -1,188 +1,331 @@
-import { readFileSync } from 'fs';
-import { ParsedNginxConfig } from '../core/config-model.js';
-import { ConfigTransformer } from '../core/transformer.js';
-import { parseUCL, isLibUCLAvailable, getLibUCLInfo } from './ucl-tool.js';
+/**
+ * nginx Configuration Parser using crossplane
+ * 
+ * This module provides TypeScript bindings for parsing nginx configurations
+ * using the official nginx Inc. crossplane Python library.
+ */
+
+import { spawn } from 'child_process';
+import { promisify } from 'util';
+import { access, readFile } from 'fs/promises';
+import * as path from 'path';
+
+export interface NginxParseErrorData {
+  file: string;
+  line: number;
+  error: string;
+  callback?: string;
+}
+
+export interface NginxDirective {
+  directive: string;
+  line: number;
+  args: string[];
+  includes?: number[];
+  block?: NginxDirective[];
+}
+
+export interface NginxConfig {
+  file: string;
+  status: 'ok' | 'failed';
+  errors: NginxParseErrorData[];
+  parsed: NginxDirective[];
+}
+
+export interface NginxParseResult {
+  status: 'ok' | 'failed';
+  errors: NginxParseErrorData[];
+  config: NginxConfig[];
+}
+
+export interface NginxParserOptions {
+  singleFile?: boolean;
+  includeComments?: boolean;
+  strict?: boolean;
+  ignoreDirectives?: string[];
+  indent?: number;
+}
+
+export class NginxParseError extends Error {
+  constructor(
+    message: string,
+    public readonly file?: string,
+    public readonly line?: number,
+    public readonly originalError?: string
+  ) {
+    super(message);
+    this.name = 'NginxParseError';
+  }
+}
 
 export class NginxParser {
-  private transformer: ConfigTransformer;
+  private crossplanePath: string = 'crossplane';
 
-  constructor() {
-    this.transformer = new ConfigTransformer();
-    
-    if (!isLibUCLAvailable()) {
-      throw new Error('libucl is required but not available. Please install libucl:\n' +
-        '  macOS: brew install libucl\n' +
-        '  Ubuntu/Debian: apt-get install libucl-dev\n' +
-        '  CentOS/RHEL: yum install libucl-devel');
+  constructor(crossplanePath?: string) {
+    if (crossplanePath) {
+      this.crossplanePath = crossplanePath;
     }
-    
-    const info = getLibUCLInfo();
-    console.log(`✅ Using libucl ${info.version || 'unknown'} at ${info.path}`);
   }
 
   /**
-   * Parse an nginx configuration file using libucl
+   * Check if crossplane is available in the system
    */
-  async parseFile(filePath: string): Promise<ParsedNginxConfig> {
-    const content = readFileSync(filePath, 'utf8');
-    return this.parseString(content, filePath);
+  async isCrossplaneAvailable(): Promise<boolean> {
+    try {
+      const result = await this.runCrossplane(['--version']);
+      return result.includes('crossplane');
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Parse nginx configuration file
+   */
+  async parseConfig(configPath: string, options: NginxParserOptions = {}): Promise<NginxParseResult> {
+    // Verify file exists
+    try {
+      await access(configPath);
+    } catch (error) {
+      throw new NginxParseError(`Configuration file not found: ${configPath}`);
+    }
+
+    // Build crossplane command
+    const args = ['parse'];
+    
+    if (options.singleFile) {
+      args.push('--single-file');
+    }
+    
+    if (options.includeComments) {
+      args.push('--include-comments');
+    }
+    
+    if (options.strict) {
+      args.push('--strict');
+    }
+    
+    if (options.ignoreDirectives && options.ignoreDirectives.length > 0) {
+      args.push('--ignore', options.ignoreDirectives.join(','));
+    }
+    
+    if (options.indent) {
+      args.push('--indent', options.indent.toString());
+    }
+
+    args.push(configPath);
+
+    try {
+      const output = await this.runCrossplane(args);
+      const result: NginxParseResult = JSON.parse(output);
+      
+      if (result.status === 'failed') {
+        const errorMessages = result.errors.map(err => 
+          `${err.file}:${err.line}: ${err.error}`
+        ).join('\n');
+        throw new NginxParseError(`nginx configuration parsing failed:\n${errorMessages}`);
+      }
+
+      return result;
+    } catch (error) {
+      if (error instanceof NginxParseError) {
+        throw error;
+      }
+      throw new NginxParseError(
+        `Failed to parse nginx configuration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        configPath
+      );
+    }
   }
 
   /**
    * Parse nginx configuration from string content
    */
-  async parseString(content: string, sourceFile?: string): Promise<ParsedNginxConfig> {
+  async parseString(content: string, options: NginxParserOptions = {}): Promise<NginxParseResult> {
+    // Create temporary file for parsing with better uniqueness
+    const tmpFile = path.join(process.cwd(), `.tmp_nginx_config_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    
     try {
-      // Preprocess nginx config to be UCL-compliant
-      const uclContent = this.preprocessNginxToUCL(content);
+      const fs = await import('fs/promises');
+      await fs.writeFile(tmpFile, content, 'utf8');
       
-      // Parse using libucl
-      const rawConfig = parseUCL(uclContent);
-      
-      if (!rawConfig) {
-        throw new Error('Failed to parse UCL content');
+      // Verify file was written successfully
+      const stats = await fs.stat(tmpFile);
+      if (!stats.isFile()) {
+        throw new Error('Failed to create temporary configuration file');
       }
+      
+      const result = await this.parseConfig(tmpFile, options);
+      
+      // Clean up temporary file
+      await fs.unlink(tmpFile).catch(() => {}); // Ignore cleanup errors
+      
+      return result;
+    } catch (error) {
+      // Ensure cleanup on error
+      try {
+        const fs = await import('fs/promises');
+        await fs.unlink(tmpFile);
+      } catch {}
+      
+      throw error;
+    }
+  }
 
-      // Transform the raw UCL object to our structured model
-      const nginxConfig = this.transformer.transformUCLToNginx(rawConfig);
-
+  /**
+   * Validate nginx configuration syntax
+   */
+  async validateConfig(configPath: string): Promise<{ valid: boolean; errors: NginxParseErrorData[] }> {
+    try {
+      const result = await this.parseConfig(configPath, { strict: true });
       return {
-        ...nginxConfig,
-        metadata: {
-          source_file: sourceFile,
-          parsed_at: new Date(),
-          parser_version: '1.0.0',
-          warnings: []
-        }
+        valid: result.status === 'ok' && result.errors.length === 0,
+        errors: result.errors
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Failed to parse nginx configuration: ${errorMessage}`);
+      if (error instanceof NginxParseError) {
+        return {
+          valid: false,
+          errors: [{
+            file: configPath,
+            line: error.line || 0,
+            error: error.message
+          }]
+        };
+      }
+      return {
+        valid: false,
+        errors: [{
+          file: configPath,
+          line: 0,
+          error: `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }]
+      };
     }
   }
 
   /**
-   * Preprocess nginx configuration to make it UCL-compliant
-   * This handles nginx-specific syntax that needs to be converted to UCL format
+   * Get nginx configuration as lexical tokens
    */
-  private preprocessNginxToUCL(content: string): string {
-    let processed = content;
-
-    // Handle nginx variables (convert $var to ${var}) but preserve quoted strings
-    // This replacement is more careful about not breaking strings
-    processed = processed.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, '\\${$1}');
-
-    // Convert nginx location blocks to UCL format
-    processed = this.convertLocationBlocks(processed);
-
-    // Convert nginx server blocks to UCL format
-    processed = this.convertServerBlocks(processed);
-
-    // Convert nginx upstream blocks to UCL format
-    processed = this.convertUpstreamBlocks(processed);
-
-    // Handle nginx directives without values
-    processed = this.handleDirectivesWithoutValues(processed);
-
-    // Ensure proper UCL structure
-    if (!processed.trim().startsWith('{')) {
-      processed = '{\n' + processed + '\n}';
+  async lexConfig(configPath: string, includeLineNumbers: boolean = false): Promise<string[]> {
+    const args = ['lex'];
+    
+    if (includeLineNumbers) {
+      args.push('--line-numbers');
     }
+    
+    args.push(configPath);
 
-    return processed;
-  }
-
-  private convertLocationBlocks(content: string): string {
-    // Simple approach: just convert location declarations, let the block parser handle the rest
-    return content.replace(
-      /location\s+(~\*?|=|\^~)?\s*([^\s{]+)\s*{/g,
-      (match, modifier, path) => {
-        const mod = modifier || '';
-        const quotedPath = path.startsWith('"') ? path : `"${path}"`;
-        
-        return `location {
-        modifier = "${mod}";
-        path = ${quotedPath};`;
-      }
-    );
-  }
-
-  private convertServerBlocks(content: string): string {
-    // Convert server blocks to be UCL-compliant
-    return content.replace(/server\s*{/g, 'server {');
-  }
-
-  private convertUpstreamBlocks(content: string): string {
-    // Convert upstream blocks to be UCL-compliant
-    return content.replace(/upstream\s+([^\s{]+)\s*{/g, 'upstream "$1" {');
-  }
-
-  private handleDirectivesWithoutValues(content: string): string {
-    // Handle directives like 'sendfile on;' -> 'sendfile = on;'
-    const lines = content.split('\n');
-    const processedLines = lines.map(line => {
-      const trimmed = line.trim();
-      
-      // Skip empty lines and comments
-      if (!trimmed || trimmed.startsWith('#')) {
-        return line;
-      }
-
-      // Skip lines that already have assignment operators
-      if (trimmed.includes('=') || trimmed.includes('{') || trimmed.includes('}')) {
-        return line;
-      }
-
-      // Convert directive value; to directive = value;
-      const directiveMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s+(.+);$/);
-      if (directiveMatch) {
-        const [, directive, value] = directiveMatch;
-        const indent = line.match(/^\s*/)?.[0] || '';
-        return `${indent}${directive} = ${value};`;
-      }
-
-      return line;
-    });
-
-    return processedLines.join('\n');
+    try {
+      const output = await this.runCrossplane(args);
+      return JSON.parse(output);
+    } catch (error) {
+      throw new NginxParseError(
+        `Failed to tokenize nginx configuration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        configPath
+      );
+    }
   }
 
   /**
-   * Export configuration as JSON
+   * Format nginx configuration
    */
-  toJSON(config: ParsedNginxConfig, pretty: boolean = true): string {
-    return JSON.stringify(config, null, pretty ? 2 : 0);
+  async formatConfig(configPath: string, options: { indent?: number; tabs?: boolean } = {}): Promise<string> {
+    const args = ['format'];
+    
+    if (options.tabs) {
+      args.push('--tabs');
+    } else if (options.indent) {
+      args.push('--indent', options.indent.toString());
+    }
+    
+    args.push(configPath);
+
+    try {
+      return await this.runCrossplane(args);
+    } catch (error) {
+      throw new NginxParseError(
+        `Failed to format nginx configuration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        configPath
+      );
+    }
   }
 
   /**
-   * Validate parsed configuration
+   * Minify nginx configuration
    */
-  validate(config: ParsedNginxConfig): { valid: boolean; errors: string[]; warnings: string[] } {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    // Basic validation rules
-    if (!config.servers || config.servers.length === 0) {
-      errors.push('Configuration must contain at least one server block');
+  async minifyConfig(configPath: string): Promise<string> {
+    try {
+      return await this.runCrossplane(['minify', configPath]);
+    } catch (error) {
+      throw new NginxParseError(
+        `Failed to minify nginx configuration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        configPath
+      );
     }
+  }
 
-    config.servers.forEach((server, index) => {
-      if (!server.listen || server.listen.length === 0) {
-        errors.push(`Server block ${index} must have at least one listen directive`);
-      }
+  /**
+   * Run crossplane command and return output
+   */
+  private async runCrossplane(args: string[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const process = spawn(this.crossplanePath, args, {
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
 
-      server.locations.forEach((location, locIndex) => {
-        if (!location.path) {
-          errors.push(`Location block ${locIndex} in server ${index} must have a path`);
+      let stdout = '';
+      let stderr = '';
+
+      process.stdout?.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      process.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve(stdout.trim());
+        } else {
+          const errorMessage = stderr.trim() || `crossplane exited with code ${code}`;
+          reject(new Error(errorMessage));
         }
       });
+
+      process.on('error', (error) => {
+        reject(new Error(`Failed to run crossplane: ${error.message}`));
+      });
+
+      // Set timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        process.kill('SIGTERM');
+        reject(new Error('crossplane command timed out'));
+      }, 30000); // 30 second timeout
+
+      process.on('close', () => {
+        clearTimeout(timeout);
+      });
     });
-
-    return {
-      valid: errors.length === 0,
-      errors,
-      warnings
-    };
   }
+}
 
+/**
+ * Default nginx parser instance
+ */
+export const nginxParser = new NginxParser();
+
+/**
+ * Convenience function to parse nginx configuration
+ */
+export async function parseNginxConfig(configPath: string, options?: NginxParserOptions): Promise<NginxParseResult> {
+  return nginxParser.parseConfig(configPath, options);
+}
+
+/**
+ * Convenience function to validate nginx configuration
+ */
+export async function validateNginxConfig(configPath: string): Promise<{ valid: boolean; errors: NginxParseErrorData[] }> {
+  return nginxParser.validateConfig(configPath);
 }
