@@ -1,6 +1,6 @@
 # nginx-to-edge-js
 
-[![CI](https://github.com/hedinfaok/nginx-to-edge-js/workflows/CI/badge.svg)](https://github.com/hedinfaok/nginx-to-edge-js/actions)
+[![CI](https://github.com/hedinfaok/nginx-to-edge-js/workflows/CI%20-%20Ubuntu/badge.svg)](https://github.com/hedinfaok/nginx-to-edge-js/actions)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
