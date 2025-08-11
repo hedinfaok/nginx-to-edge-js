@@ -1,9 +1,6 @@
 name: CI - macOS
 
 on:
-  workflow_dispatch:  # Manual trigger
-  schedule:
-    - cron: '0 6 * * 1'  # Weekly Monday 6 AM UTC
   push:
     branches: [ main, develop ]
     paths:
@@ -28,9 +25,6 @@ on:
 jobs:
   test-macos:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        node-version: ['20.x']  # Single version for macOS compatibility testing
     
     steps:
     - name: Checkout code
@@ -39,7 +33,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '20.x'
         cache: 'npm'
     
     - name: Setup Python
