@@ -3,8 +3,24 @@ name: CI - Ubuntu
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'package*.json'
+      - 'tsconfig.json'
+      - 'jest.config.cjs'
+      - 'eslint.config.js'
+      - '.github/workflows/**'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'package*.json'
+      - 'tsconfig.json'
+      - 'jest.config.cjs'
+      - 'eslint.config.js'
+      - '.github/workflows/**'
 
 jobs:
   test-ubuntu:
