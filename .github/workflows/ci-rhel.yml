@@ -30,7 +30,7 @@ jobs:
     - name: Install development tools
       run: |
         dnf groupinstall -y "Development Tools"
-        dnf install -y cmake autoconf automake libtool pkgconfig
+        dnf install -y cmake autoconf automake libtool pkgconfig wget
         # Try to get a newer autoconf if available from EPEL
         dnf install -y epel-release || true
         dnf --enablerepo=epel install -y autoconf || true
@@ -38,39 +38,25 @@ jobs:
 
     - name: Install libucl (FreeBSD version from source)
       run: |
-        # Try to download and build a stable release first
+        # For RHEL/AlmaLinux 9, use an older libucl version compatible with autoconf 2.69
         cd /tmp
         
-        # Try stable release 0.8.2 first (has pre-generated configure)
-        if wget -q https://github.com/vstakhov/libucl/archive/refs/tags/0.8.2.tar.gz; then
-          echo "Using stable release 0.8.2"
-          tar -xzf 0.8.2.tar.gz
-          cd libucl-0.8.2
-          # Check if configure exists
-          if [ -f configure ]; then
-            ./configure --prefix=/usr/local
-          else
-            # Fall back to autogen if needed
-            autoconf --version
-            ./autogen.sh
-            ./configure --prefix=/usr/local
-          fi
+        # Use libucl 0.8.1 which should work with older autoconf
+        echo "Downloading libucl 0.8.1 for RHEL compatibility"
+        wget -q https://github.com/vstakhov/libucl/archive/refs/tags/0.8.1.tar.gz
+        tar -xzf 0.8.1.tar.gz
+        cd libucl-0.8.1
+        
+        # Check autoconf version
+        autoconf --version
+        
+        # Try the build process
+        if [ -f configure ]; then
+          echo "Using existing configure script"
+          ./configure --prefix=/usr/local
         else
-          echo "Falling back to git clone"
-          # Clone and build FreeBSD libucl from source (same as Ubuntu)
-          git clone https://github.com/vstakhov/libucl.git /tmp/libucl
-          cd /tmp/libucl
-          
-          # For AlmaLinux 9, we need to handle the autoconf version requirement
-          autoconf --version || echo "Autoconf version check"
-          
-          # Try to generate configure script directly if autogen.sh fails
-          if ! ./autogen.sh; then
-            echo "autogen.sh failed, trying manual approach..."
-            # Generate configure script manually
-            autoreconf -fiv || aclocal
-          fi
-          
+          echo "Running autogen.sh"
+          ./autogen.sh
           ./configure --prefix=/usr/local
         fi
         
@@ -79,7 +65,7 @@ jobs:
         ldconfig
         # Verify installation
         ls -la /usr/local/lib/libucl*
-        echo "FreeBSD libucl installed successfully on RHEL"
+        echo "FreeBSD libucl 0.8.1 installed successfully on RHEL"
 
     - name: Install Python and pip
       run: |
