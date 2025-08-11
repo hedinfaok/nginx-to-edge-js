@@ -21,6 +21,9 @@ npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 
 # Generate AWS Lambda@Edge from nginx config
 npm run cli generate lambda-edge examples/basic-reverse-proxy/nginx.conf
+
+# Generate QuickJS code from nginx config
+npm run cli generate quickjs examples/basic-reverse-proxy/nginx.conf
 ```
 
 ## Features
@@ -29,6 +32,7 @@ npm run cli generate lambda-edge examples/basic-reverse-proxy/nginx.conf
 - **CloudFlare Workers** - Generate worker.js files  
 - **Next.js Middleware** - Generate middleware.ts files
 - **AWS Lambda@Edge** - Generate lambda-edge.js files
+- **QuickJS Runtime** - Generate quickjs.js files for ultra-lightweight edge
 - **TypeScript Support** - Full type safety throughout
 
 ## CLI Commands
@@ -38,6 +42,7 @@ npm run cli generate lambda-edge examples/basic-reverse-proxy/nginx.conf
 npm run cli generate cloudflare <nginx-file>
 npm run cli generate nextjs <nginx-file>
 npm run cli generate lambda-edge <nginx-file>
+npm run cli generate quickjs <nginx-file>
 
 # Custom output path
 npm run cli generate cloudflare <nginx-file> --output my-worker.js

@@ -5,6 +5,7 @@ import { nginxParser } from '../converters/nginx-parser.js';
 import { CloudFlareGenerator } from '../generators/cloudflare.js';
 import { NextJSGenerator } from '../generators/nextjs-middleware.js';
 import { LambdaEdgeGenerator } from '../generators/lambda-edge.js';
+import { QuickJSGenerator } from '../generators/quickjs.js';
 import { ParsedNginxConfig, NginxConfig, ServerBlock, LocationBlock } from '../core/config-model.js';
 import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
@@ -220,7 +221,7 @@ program
 program
   .command('generate')
   .description('Generate edge platform code from nginx configuration')
-  .argument('<platform>', 'target platform (cloudflare, nextjs, lambda-edge, all)')
+  .argument('<platform>', 'target platform (cloudflare, nextjs, lambda-edge, quickjs, all)')
   .argument('<file>', 'nginx configuration file')
   .option('-o, --output <file>', 'output file path')
   .option('-d, --output-dir <dir>', 'output directory (for "all" platform)')
@@ -284,6 +285,17 @@ program
           console.error(`❌ Lambda@Edge generation failed: ${error instanceof Error ? error.message : error}`);
         }
         
+        // QuickJS
+        try {
+          const quickjsGenerator = new QuickJSGenerator(transformedConfig);
+          const quickjsCode = quickjsGenerator.generate();
+          const quickjsPath = join(outputDir, 'quickjs.js');
+          writeFileSync(quickjsPath, quickjsCode);
+          console.log(`✅ QuickJS: ${quickjsPath}`);
+        } catch (error) {
+          console.error(`❌ QuickJS generation failed: ${error instanceof Error ? error.message : error}`);
+        }
+        
       } else if (platform === 'cloudflare') {
         // Generate CloudFlare Workers
         console.log(`🚀 Generating CloudFlare Workers...`);
@@ -326,9 +338,23 @@ program
         
         console.log(`✅ AWS Lambda@Edge code generated: ${outputPath}`);
         
+      } else if (platform === 'quickjs') {
+        // Generate QuickJS
+        console.log(`🚀 Generating QuickJS code...`);
+        
+        const generator = new QuickJSGenerator(transformedConfig);
+        const code = generator.generate();
+        
+        const outputPath = options.output || 'quickjs.js';
+        const outputDir = dirname(outputPath);
+        mkdirSync(outputDir, { recursive: true });
+        writeFileSync(outputPath, code);
+        
+        console.log(`✅ QuickJS code generated: ${outputPath}`);
+        
       } else {
         console.error(`❌ Unknown platform: ${platform}`);
-        console.error('Supported platforms: cloudflare, nextjs, lambda-edge, all');
+        console.error('Supported platforms: cloudflare, nextjs, lambda-edge, quickjs, all');
         process.exit(1);
       }
       

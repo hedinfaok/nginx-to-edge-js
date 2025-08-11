@@ -190,6 +190,78 @@ if (matchesPath(uri, "/api/")) {
 - **Regions:** Limited to CloudFront edge locations
 - **Cold Starts:** 50-100ms typical
 
+## QuickJS Runtime
+
+### Implementation Details
+
+**File:** `src/generators/quickjs.ts`  
+**Output:** JavaScript (QuickJS compatible)  
+**Runtime:** Ultra-lightweight JavaScript engine  
+
+### Supported nginx Directives
+
+#### ✅ Core Directives
+- `listen` → Request routing logic
+- `server_name` → Host header validation
+- `location` → Path pattern matching  
+- `return` → Direct response generation
+- `rewrite` → Basic URL transformation
+
+#### ✅ Proxy Directives
+- `proxy_pass` → Platform-specific proxy implementation
+- `proxy_set_header` → Request header manipulation
+- `add_header` → Response header manipulation
+
+#### ⚠️ Limited Support
+- `proxy_cache` → Platform-dependent caching
+- Complex regex → QuickJS regex support varies
+- Node.js APIs → Not available in QuickJS
+
+#### ❌ Not Supported
+- `fastcgi_pass` → No FastCGI support
+- `uwsgi_pass` → No uWSGI support
+- `auth_basic` → Platform-specific auth required
+- File system operations → No fs module
+
+### Code Generation Patterns
+
+```javascript
+// Location block → QuickJS function
+location /api/ {
+    proxy_pass http://backend:3000;
+    proxy_set_header Host $host;
+}
+
+// Generates:
+if (matchesPath(context.pathname, "/api/")) {
+    const upstream = {
+        host: 'backend',
+        port: 3000,
+        protocol: 'http:',
+        path: '/'
+    };
+    const proxyUrl = buildProxyUrl(upstream, context.pathname);
+    return proxyRequest(proxyUrl, context.method, proxyHeaders, request.body);
+}
+```
+
+### Platform Compatibility
+
+**Compatible Platforms:**
+- **Fastly Compute@Edge** - WebAssembly QuickJS
+- **Lagon** - Native QuickJS runtime
+- **Supabase Edge Functions** - Deno with QuickJS
+- **WasmEdge** - QuickJS integration
+- **Shopify Oxygen** - QuickJS for commerce
+
+### Platform Limitations
+
+- **Memory:** ~200KB typical, ~2MB max
+- **Binary Size:** ~500KB for runtime
+- **Startup Time:** <1ms cold start
+- **API Support:** Web APIs only, no Node.js APIs
+- **Regex:** Basic support, varies by platform
+
 ## Platform Comparison
 
 | Feature | CloudFlare | Next.js | Lambda@Edge |
