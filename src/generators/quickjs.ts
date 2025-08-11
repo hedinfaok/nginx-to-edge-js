@@ -215,7 +215,7 @@ export class QuickJSGenerator extends BaseGenerator {
       handlers.push(`${indent}// Execute proxy request (platform-specific implementation needed)`);
       handlers.push(`${indent}return proxyRequest(proxyUrl, context.method, proxyHeaders, request.body);`);
       
-    } catch (error) {
+    } catch {
       // Fallback for invalid URLs
       handlers.push(`${indent}// Invalid proxy URL: ${proxyPass}`);
       handlers.push(`${indent}return createResponse(502, "Bad Gateway - Invalid upstream URL");`);
