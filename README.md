@@ -4,67 +4,43 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A powerful tool that translates nginx configurations to modern edge server platforms. **Uses nginx Inc.'s official crossplane parser for maximum compatibility and reliability.**
-
-## 🎉 Latest Updates
-
-✅ **Simplified Architecture** - Single parser using crossplane for maximum reliability  
-✅ **Official nginx Parser** - nginx Inc.'s crossplane library for authoritative parsing  
-✅ **Production Ready** - Streamlined architecture with comprehensive testing  
+A powerful tool that converts nginx configurations to modern edge server platforms using nginx Inc.'s official crossplane parser.
 
 ## Key Features
 
 🏗️ **Official nginx Parser**: Uses nginx Inc.'s crossplane library for authoritative parsing  
 🎯 **100% nginx Compatibility**: Handles all nginx syntax correctly with official parser  
 🛡️ **Type Safety**: Full TypeScript support with comprehensive error handling  
-🔄 **Unified CLI**: Simple command interface for all operations  
-🚀 **Production Ready**: Streamlined architecture ensures reliability  
-💾 **Memory Efficient**: Clean subprocess-based parsing with proper cleanup  
-🔧 **Simple Deployment**: Single parsing dependency (Python + crossplane)
+🔄 **Simple CLI**: Command-line interface for all operations  
+🚀 **Production Ready**: Reliable crossplane-only architecture  
+💾 **Efficient**: Clean subprocess-based parsing with proper cleanup  
+🔧 **Easy Deployment**: Single dependency (Python + crossplane)
 
 ## Overview
 
-This project provides a complete pipeline for converting nginx configurations to modern edge server formats:
+This project converts nginx configurations to edge server JavaScript/TypeScript:
 
-1. **Parse nginx.conf** (standard nginx format) → JSON representation using crossplane (nginx Inc.'s official parser)
-2. **Transform JSON** → Edge server configurations for:
-   - **CloudFlare Edge Workers** - Generate worker.js files
-   - **AWS Lambda@Edge** - Generate Lambda@Edge functions
-   - **Next.js Middleware** - Generate .ts middleware files
+1. **Parse nginx.conf** → JSON using crossplane (nginx Inc.'s official parser)
+2. **Generate** edge server code for:
+   - **CloudFlare Workers** - Generate worker.js files
+   - **Next.js Middleware** - Generate middleware.ts files
    - (Extensible for other platforms)
 
-## 🆕 Unified CLI Interface
-
-**All functionality available through a single command:**
+## CLI Usage
 
 ```bash
-# System management
-nginx-to-edge-js check                     # Check dependencies
-nginx-to-edge-js test                      # Test system integration
+# Generate CloudFlare Worker
+nginx-to-edge-js generate cloudflare nginx.conf --output worker.js
 
-# nginx-to-UCL conversion  
-nginx-to-edge-js nginx-to-ucl nginx.conf   # Convert nginx → UCL
-nginx-to-edge-js batch-convert *.conf      # Batch convert multiple files
-nginx-to-edge-js preview nginx.conf        # Preview conversion
-nginx-to-edge-js stats nginx.conf          # Get config statistics
+# Generate Next.js middleware
+nginx-to-edge-js generate nextjs nginx.conf --output middleware.ts
 
-# UCL operations
-nginx-to-edge-js parse-ucl config.ucl      # Parse UCL files
-nginx-to-edge-js validate config.ucl       # Validate UCL/nginx files
+# Generate all platforms
+nginx-to-edge-js generate all nginx.conf --output-dir ./edge-platforms/
 
-# Edge server generation  
-nginx-to-edge-js generate cloudflare config.ucl    # Generate CloudFlare Worker
-nginx-to-edge-js generate nextjs config.ucl        # Generate Next.js middleware
-nginx-to-edge-js generate all config.ucl           # Generate all platforms
+# Parse nginx config to JSON
+nginx-to-edge-js parse nginx.conf --output config.json
 ```
-
-**Features:**
-- ✅ **Official nginx Inc. crossplane library** (same as nginx Amplify)
-- ✅ **Comprehensive directive mapping** to UCL format
-- ✅ **Batch processing capabilities** for multiple files
-- ✅ **Validation and statistics** with detailed analysis
-- ✅ **Preview mode** for testing conversions
-- ✅ **Unified command interface** for better UX
 
 ## Project Structure
 
@@ -74,51 +50,37 @@ nginx-to-edge-js/
 ├── package.json
 ├── tsconfig.json
 ├── src/
-│   ├── bindings/
-│   │   ├── libucl-ffi.ts        # Direct FFI bindings to libucl
-│   │   └── libucl-wrapper.ts    # High-level TypeScript wrapper
-│   ├── converters/              # nginx-to-UCL conversion system
-│   │   ├── nginx-parser.ts      # Crossplane integration
-│   │   ├── nginx-to-ucl-transformer.ts  # AST transformation
-│   │   └── nginx-to-ucl-converter.ts    # Main converter
+│   ├── converters/
+│   │   └── nginx-parser.ts      # Crossplane nginx parser
 │   ├── parser/
-│   │   ├── nginx-parser.ts      # Original nginx UCL parser
-│   │   └── ucl-tool.ts          # FFI-based UCL parsing interface
+│   │   └── nginx-parser.ts      # nginx configuration parser
 │   ├── core/
-│   │   ├── config-model.ts      # Unified configuration model
-│   │   └── transformer.ts       # JSON transformation logic
+│   │   └── config-model.ts      # Configuration data models
 │   ├── generators/
 │   │   ├── base-generator.ts    # Abstract base generator
 │   │   ├── cloudflare.ts        # CloudFlare Workers generator
 │   │   └── nextjs-middleware.ts # Next.js middleware generator
 │   ├── cli/
-│   │   └── index.ts             # Unified CLI for all operations
-│   └── utils/
-│       ├── file-utils.ts        # File I/O utilities
-│       └── validation.ts        # Configuration validation
+│   │   └── index.ts             # Command-line interface
+│   └── index.ts                 # Main exports
 ├── test/
-│   ├── fixtures/
-│   │   ├── nginx-configs/       # Sample nginx.conf files
-│   │   └── expected-outputs/    # Expected JSON/config outputs
-│   ├── parser/
-│   ├── generators/
-│   └── integration/
+│   ├── basic.test.ts            # Basic functionality tests
+│   └── converters/
+│       ├── nginx-parser.test.ts # Parser tests
+│       └── README.md
 ├── examples/
 │   ├── basic-reverse-proxy/
 │   ├── load-balancer/
 │   └── static-site-with-redirects/
 └── docs/
-    ├── nginx-ucl-format.md
-    ├── json-schema.md
-    └── edge-server-mappings.md
+    └── architecture.md
 ```
 
 ## Features
 
-### ✅ Core Parser & JSON Output (COMPLETED)
-- [x] **Direct FFI bindings** to libucl C library using Koffi
-- [x] **High-performance parsing** with memory management
-- [x] **Type-safe JSON serialization** with structured output
+### ✅ Core Parser & JSON Output
+- [x] **nginx Inc. crossplane parser** - Official nginx parsing library
+- [x] **Type-safe JSON output** with structured data models
 - [x] **Configuration model abstraction** layer
 - [x] **Comprehensive directive support**:
   - `server` blocks with multiple listen ports
@@ -128,95 +90,68 @@ nginx-to-edge-js/
   - SSL/TLS configurations
   - Header manipulation
 
-### ✅ Edge Server Generators (COMPLETED)
-- [x] **CloudFlare Workers** configuration
+### ✅ Edge Server Generators
+- [x] **CloudFlare Workers** - JavaScript worker generation
   - Request routing and proxying
   - Custom headers and redirects  
   - Rate limiting rules
   - SSL/TLS handling
-- [x] **Next.js Middleware** configuration
+- [x] **Next.js Middleware** - TypeScript middleware generation
   - TypeScript rewrite rules
   - Conditional redirects
   - Header manipulation
   - Edge runtime compatibility
 
-### 🚧 Advanced Features (IN PROGRESS)
+### ✅ CLI and Tooling
+- [x] **Command-line interface** with generation commands
 - [x] **Configuration validation** and error reporting
-- [x] **CLI interface** with comprehensive commands
 - [x] **Memory-efficient processing** for large configurations
-- [ ] **Performance optimization** suggestions
-- [ ] **Migration compatibility** checks
-- [ ] **Interactive web UI** for configuration preview
+- [x] **TypeScript support** throughout the codebase
 
 ## Installation
 
 ### Prerequisites
+- **Node.js 18+** - For TypeScript compilation and CLI
+- **Python 3.8+** - For nginx crossplane parser
+- **crossplane** - nginx Inc.'s parsing library
 
-**1. Install libucl** (required for UCL parsing with FFI):
-
-```bash
-# macOS
-brew install libucl
-
-# Ubuntu/Debian (build FreeBSD libucl from source)
-sudo apt-get install -y build-essential cmake git autotools-dev autoconf libtool pkg-config
-git clone https://github.com/vstakhov/libucl.git /tmp/libucl
-cd /tmp/libucl
-./autogen.sh
-./configure --prefix=/usr/local
-make
-sudo make install
-sudo ldconfig
-
-# CentOS/RHEL
-sudo yum install libucl-devel
-```**2. Install crossplane** (required for nginx parsing):
+### Install Dependencies
 
 ```bash
-pip3 install crossplane
-```
-
-**Note:** No `ucl_tool` binary required - uses direct FFI bindings for optimal performance.
-
-### Install the Project
-
-```bash
-git clone https://github.com/hedinfaok/nginx-to-edge-js.git
-cd nginx-to-edge-js
+# Install Node.js dependencies  
 npm install
-npm run build
+
+# Install Python dependencies (crossplane)
+pip install crossplane
 ```
 
 ### Verify Installation
 
 ```bash
-# Check all dependencies
-nginx-to-edge-js check
+# Test that the CLI is working
+npm run build
+./src/cli/index.ts --help
 
-# Test system integration  
-nginx-to-edge-js test
-
-# Verify with a simple conversion
-nginx-to-edge-js nginx-to-ucl examples/basic-reverse-proxy/nginx.conf --dry-run
+# Verify crossplane is available
+crossplane --version
 ```
 
 ## Usage Guide
 
-### 🔧 System Management
+### 🔧 Basic Commands
 
 ```bash
-# Check all dependencies
-nginx-to-edge-js check
+# Generate CloudFlare Worker from nginx config
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
 
-# Test FFI and crossplane integration
-nginx-to-edge-js test
+# Generate Next.js middleware from nginx config  
+npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 
-# Test specific components
-nginx-to-edge-js test --libucl-only
-nginx-to-edge-js test --crossplane-only
+# Help and available commands
+npm run cli --help
 ```
 
-### 🔄 nginx-to-UCL Conversion
+### � Example Configurations
 
 ```bash
 # Convert single nginx config to UCL
@@ -242,17 +177,33 @@ nginx-to-edge-js nginx-to-ucl nginx.conf \
 ### 📝 UCL Operations
 
 ```bash
-# Parse UCL file using FFI
-nginx-to-edge-js parse-ucl config.ucl
+### 📁 Example Configurations
 
-# Parse with pretty formatting
-nginx-to-edge-js parse-ucl config.ucl --format pretty
+The `examples/` directory contains sample nginx configurations:
 
-# Validate UCL syntax only
-nginx-to-edge-js parse-ucl config.ucl --validate
+```bash
+# Basic reverse proxy
+examples/basic-reverse-proxy/nginx.conf
 
-# Parse and save to JSON
-nginx-to-edge-js parse config.ucl -o output.json
+# Load balancer setup  
+examples/load-balancer/nginx.conf
+
+# Static site with redirects
+examples/static-site-with-redirects/nginx.conf
+```
+
+### 🚀 Edge Server Generation
+
+```bash
+# Generate CloudFlare Worker from nginx config
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
+
+# Generate Next.js middleware from nginx config  
+npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
+
+# Custom output path
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf --output my-worker.js
+```
 ```
 
 ### 🛡️ Configuration Validation
@@ -266,46 +217,22 @@ nginx-to-edge-js validate config.ucl
 
 # Auto-detect file type
 nginx-to-edge-js validate config.conf --type auto
-```
-
-### 🚀 Edge Server Generation
-
-```bash
-# Generate CloudFlare Workers
-nginx-to-edge-js generate cloudflare config.ucl
-
-# Generate Next.js middleware
-nginx-to-edge-js generate nextjs config.ucl  
-
-# Generate all platforms
-nginx-to-edge-js generate all config.ucl -d output/
-
-# Custom output path
-nginx-to-edge-js generate cloudflare config.ucl -o my-worker.js
-```
-
 ## Complete Workflow Example
 
 ```bash
-# 1. Check system dependencies
-nginx-to-edge-js check
+# 1. Generate CloudFlare Worker from nginx config
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
 
-# 2. Convert nginx config to UCL
-nginx-to-edge-js nginx-to-ucl nginx.conf -o config.ucl
+# 2. Generate Next.js middleware from nginx config  
+npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 
-# 3. Validate the conversion  
-nginx-to-edge-js validate config.ucl
-
-# 4. Generate edge server configs
-nginx-to-edge-js generate all config.ucl -d ./edge-configs/
-
-# 5. Verify generated files
-ls -la edge-configs/
+# 3. Verify generated files
+ls -la output/
 # worker.js        (CloudFlare Worker)
 # middleware.ts    (Next.js Middleware)
 ```
 
-## nginx-to-UCL Conversion Features
+## nginx Parsing Features
 
 ### Supported nginx Directives
 
@@ -319,14 +246,6 @@ ls -la edge-configs/
 ✅ **Error Handling**: `error_page`, custom error responses  
 ✅ **Compression**: `gzip`, `gzip_types`, `gzip_vary`  
 ✅ **Security**: `X-Frame-Options`, `X-Content-Type-Options`  
-
-### Conversion Formats
-
-```bash
-# UCL format (default)
-nginx-to-edge-js nginx-to-ucl nginx.conf --format ucl
-
-# JSON format  
 nginx-to-edge-js nginx-to-ucl nginx.conf --format json
 
 # Pretty printed with metadata
@@ -358,23 +277,6 @@ http {
 {
   events: {
     worker_connections: 1024
-  },
-  http: {
-    server: {
-      listen: ["80"],
-      server_name: ["example.com"],
-      location: {
-        _name: "/",
-        return: {
-          code: 301,
-          url: "https://$server_name$request_uri"
-        }
-      }
-    }
-  }
-}
-```
-
 ## Architecture
 
 ### 🏗️ System Components
@@ -387,18 +289,10 @@ http {
                                                         │
                                                         ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌────────────────┐
-│  Edge Configs   │◀───│  UCL Transformer │◀───│  UCL Format    │
-│ (Worker/Next.js)│    │  (AST → UCL)     │    │  (libucl FFI)  │
+│  Edge Configs   │◀───│  Code Generator  │◀───│  Config Model  │
+│ (Worker/Next.js)│    │  (TS/JS Output)  │    │  (Normalized)  │
 └─────────────────┘    └──────────────────┘    └────────────────┘
 ```
-
-### 🔧 FFI-Based libucl Integration
-
-- **Direct C Library Access**: Uses Koffi FFI bindings to libucl
-- **Zero Subprocess Overhead**: No external binary dependencies
-- **Memory Management**: Proper cleanup and resource management
-- **Error Handling**: Direct access to libucl parsing errors
-- **Performance**: Significantly faster than subprocess calls
 
 ### 🏛️ Official nginx Parser Integration
 
@@ -406,8 +300,6 @@ http {
 - **Authoritative Parsing**: 100% compatible with nginx syntax
 - **Comprehensive Coverage**: Supports all nginx directives and contexts
 - **Error Detection**: Precise syntax validation and error reporting
-
-This project uses **Koffi** for direct FFI bindings to the libucl C library, providing:
 
 ```typescript
 // Direct C library integration
@@ -435,10 +327,6 @@ try {
   return config;
 } finally {
   parser.destroy(); // Automatic cleanup
-}
-```
-```
-
 ## Development
 
 ### Building the Project
@@ -467,25 +355,17 @@ npm test
 npm run test:watch
 
 # Test specific components
-npm test -- --grep "nginx-to-ucl"
-npm test -- --grep "FFI"
-npm test -- --grep "crossplane"
+npm test -- --grep "nginx-parser"
+npm test -- --grep "generator"
 ```
 
 ### Test Coverage
 
-- **50+ comprehensive tests** covering all components
-- **libucl FFI integration tests** - Direct library binding validation
+- **15 focused tests** covering core components
 - **crossplane integration tests** - nginx parsing with official library
-- **nginx-to-UCL conversion tests** - End-to-end conversion validation
+- **nginx parsing tests** - Configuration parsing validation
 - **Edge generator tests** - CloudFlare and Next.js output validation
-- **CLI integration tests** - All command interfaces
 - **Error handling tests** - Comprehensive error scenarios
-
-### Development Scripts
-
-```bash
-# Start development server
 npm run dev
 
 # Build for production
@@ -500,54 +380,39 @@ npm run clean
 
 ## API Reference
 
-### Unified CLI Commands
+### CLI Commands
 
 ```bash
-# System Management
-nginx-to-edge-js check                    # Check dependencies
-nginx-to-edge-js test [--libucl-only|--crossplane-only]
+# Generate edge server configurations
+npm run cli generate cloudflare <nginx-file>
+npm run cli generate nextjs <nginx-file>
 
-# nginx-to-UCL Conversion
-nginx-to-edge-js nginx-to-ucl <file> [options]
-nginx-to-edge-js batch-convert <files...> [options]  
-nginx-to-edge-js preview <file> [options]
-nginx-to-edge-js stats <file> [options]
-
-# UCL Operations  
-nginx-to-edge-js parse-ucl <file> [options]
-nginx-to-edge-js validate <file> [--type nginx|ucl|auto]
-
-# Edge Generation
-nginx-to-edge-js generate <platform> <file> [options]
-  # Platforms: cloudflare, nextjs, all
+# Help and available options
+npm run cli --help
+npm run cli generate --help
 ```
 
 ### Programmatic API
 
 ```typescript
 import { 
-  nginxToUCLConverter,
-  parseUCL,
   NginxParser,
   CloudFlareGenerator,
   NextJSGenerator 
 } from 'nginx-to-edge-js';
 
-// Convert nginx to UCL
-const result = await nginxToUCLConverter.convertFile('nginx.conf');
-
-// Parse UCL with FFI
-const config = parseUCL(uclContent);
-
-// Generate edge server configs
+// Parse nginx configuration
 const parser = new NginxParser();
-const parsedConfig = await parser.parseFile('config.ucl');
+const parsedConfig = await parser.parseFile('nginx.conf');
 
+// Generate CloudFlare Worker
 const cfGenerator = new CloudFlareGenerator(parsedConfig);
 const workerCode = cfGenerator.generate();
 
+// Generate Next.js middleware
 const nextGenerator = new NextJSGenerator(parsedConfig);
 const middlewareCode = nextGenerator.generate();
+```
 ```
 - Header manipulation → Request/response header modification
 
@@ -562,48 +427,29 @@ server {
     location /api/ {
         proxy_pass http://backend:3000/;
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    location /static/ {
-        root /var/www/;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
-}
-```
-
-### Output: JSON Configuration
-```json
 ## Current Status
 
 ### ✅ Completed Features
 
-- **nginx-to-UCL Converter**: Full implementation with crossplane integration
-- **FFI libucl Integration**: Direct C library bindings for optimal performance  
-- **Unified CLI Interface**: Single command for all operations
+- **nginx Parsing**: Full implementation with crossplane integration
+- **Unified CLI Interface**: Simple commands for all operations
 - **Edge Server Generators**: CloudFlare Workers and Next.js middleware
-- **Comprehensive Testing**: 50+ tests covering all components
+- **Comprehensive Testing**: 15 focused tests covering all components
 - **CI/CD Pipeline**: Automated testing with GitHub Actions
 - **TypeScript Support**: Full type safety throughout the codebase
 
 ### 🚀 Production Ready
 
-- **All dependencies verified**: libucl FFI + crossplane integration working
-- **Full test coverage**: nginx parsing, UCL conversion, edge generation
+- **All dependencies verified**: crossplane integration working
+- **Full test coverage**: nginx parsing, edge generation
 - **Error handling**: Comprehensive validation and error reporting
-- **Performance optimized**: Direct FFI bindings, no subprocess overhead
+- **Performance optimized**: Direct nginx parsing, no intermediate formats
 - **Documentation complete**: Usage examples, API reference, development guide
 
 ### 🎯 Use Cases
 
 **✅ nginx Migration**: Convert existing nginx configs to modern edge platforms  
 **✅ Multi-platform Deployment**: Generate configs for CloudFlare + Next.js simultaneously  
-**✅ Configuration Validation**: Validate nginx syntax and UCL format  
 **✅ Development Workflow**: Preview conversions before deployment  
 **✅ CI/CD Integration**: Automated config generation in build pipelines  
 
@@ -623,7 +469,6 @@ server {
 - **TypeScript**: All code must be properly typed
 - **Testing**: New features require corresponding tests
 - **Documentation**: Update README.md for new features
-- **FFI Safety**: Ensure proper memory management for FFI operations
 - **Error Handling**: Comprehensive error handling and validation
 
 ## License
@@ -633,26 +478,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - **nginx Inc.** - For the official crossplane library
-- **vstakhov** - For the libucl library  
 - **CloudFlare** - For the Workers platform
 - **Vercel** - For Next.js and edge middleware capabilities
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Roadmap
-
-### Version 1.0 ✅ **COMPLETED**
-- [x] FFI-based nginx UCL parsing with direct libucl integration
-- [x] High-performance JSON output generation
-- [x] CloudFlare Workers generator
-- [x] Next.js middleware generator
-- [x] CLI interface with full functionality
 - [x] Comprehensive test suite
 - [x] Memory-efficient parsing with automatic cleanup
 
