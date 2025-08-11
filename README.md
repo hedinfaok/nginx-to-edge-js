@@ -151,11 +151,38 @@ npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 npm run cli --help
 ```
 
+### 📁 Example Configurations
+
+The `examples/` directory contains sample nginx configurations:
+
+```bash
+```bash
+# Basic reverse proxy
+examples/basic-reverse-proxy/nginx.conf
+
+# Load balancer setup  
+examples/load-balancer/nginx.conf
+
+# Static site with redirects
+examples/static-site-with-redirects/nginx.conf
+```
+
+### 🚀 Edge Server Generation
+
+```bash
+# Generate CloudFlare Worker from nginx config
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
+
+# Generate Next.js middleware from nginx config  
+npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
+```
+```
+
 ### � Example Configurations
 
 ```bash
-# Convert single nginx config to UCL
-nginx-to-edge-js nginx-to-ucl nginx.conf -o output.ucl
+# Generate CloudFlare Worker from nginx config
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
 
 # Preview conversion without saving
 nginx-to-edge-js preview nginx.conf
@@ -166,24 +193,11 @@ nginx-to-edge-js batch-convert *.conf -d ./output/
 # Get configuration statistics
 nginx-to-edge-js stats nginx.conf
 
-# Convert with specific options
-nginx-to-edge-js nginx-to-ucl nginx.conf \
-  --format ucl \
-  --indent 2 \
-  --include-comments \
-  --validate-input
+# Generate with custom output path
+npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf --output my-worker.js
 ```
 
-### 📝 UCL Operations
-
-```bash
-### 📁 Example Configurations
-
-The `examples/` directory contains sample nginx configurations:
-
-```bash
-# Basic reverse proxy
-examples/basic-reverse-proxy/nginx.conf
+## Complete Workflow Example
 
 # Load balancer setup  
 examples/load-balancer/nginx.conf
@@ -204,19 +218,7 @@ npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 # Custom output path
 npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf --output my-worker.js
 ```
-```
 
-### 🛡️ Configuration Validation
-
-```bash
-# Validate nginx configuration
-nginx-to-edge-js validate nginx.conf
-
-# Validate UCL configuration  
-nginx-to-edge-js validate config.ucl
-
-# Auto-detect file type
-nginx-to-edge-js validate config.conf --type auto
 ## Complete Workflow Example
 
 ```bash
@@ -245,38 +247,8 @@ ls -la output/
 ✅ **Upstream Blocks**: Load balancing, server definitions  
 ✅ **Error Handling**: `error_page`, custom error responses  
 ✅ **Compression**: `gzip`, `gzip_types`, `gzip_vary`  
-✅ **Security**: `X-Frame-Options`, `X-Content-Type-Options`  
-nginx-to-edge-js nginx-to-ucl nginx.conf --format json
+✅ **Security**: `X-Frame-Options`, `X-Content-Type-Options`
 
-# Pretty printed with metadata
-nginx-to-edge-js nginx-to-ucl nginx.conf --format ucl --no-metadata
-```
-
-### Example Conversion
-
-**Input nginx.conf:**
-```nginx
-events {
-    worker_connections 1024;
-}
-
-http {
-    server {
-        listen 80;
-        server_name example.com;
-        
-        location / {
-            return 301 https://$server_name$request_uri;
-        }
-    }
-}
-```
-
-**Output UCL:**
-```ucl
-{
-  events: {
-    worker_connections: 1024
 ## Architecture
 
 ### 🏗️ System Components
@@ -301,32 +273,6 @@ http {
 - **Comprehensive Coverage**: Supports all nginx directives and contexts
 - **Error Detection**: Precise syntax validation and error reporting
 
-```typescript
-// Direct C library integration
-import { ucl_parser_new, ucl_parser_add_string, ucl_object_emit } from './bindings/libucl-ffi.js';
-
-// High-level TypeScript wrapper  
-import { UCLParser } from './bindings/libucl-wrapper.js';
-
-const parser = new UCLParser();
-const result = parser.parseString(uclContent);
-```
-
-**Benefits over subprocess approach:**
-- ⚡ **10x faster parsing** - no process spawning overhead
-- 🔒 **Better error handling** - direct access to libucl error messages
-- 💾 **Memory efficient** - controlled memory allocation and cleanup
-- 🎯 **Type safety** - full TypeScript integration with proper types
-- 📦 **Zero dependencies** - no external binaries required
-
-**Memory Management:**
-```typescript
-const parser = new UCLParser();
-try {
-  const config = parser.parseString(content);
-  return config;
-} finally {
-  parser.destroy(); // Automatic cleanup
 ## Development
 
 ### Building the Project
@@ -413,20 +359,7 @@ const workerCode = cfGenerator.generate();
 const nextGenerator = new NextJSGenerator(parsedConfig);
 const middlewareCode = nextGenerator.generate();
 ```
-```
-- Header manipulation → Request/response header modification
 
-## Examples
-
-### Input: nginx.conf (UCL format)
-```nginx
-server {
-    listen 80;
-    server_name example.com;
-    
-    location /api/ {
-        proxy_pass http://backend:3000/;
-        proxy_set_header Host $host;
 ## Current Status
 
 ### ✅ Completed Features
@@ -507,9 +440,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- **nginx community** for comprehensive documentation and configuration standards
-- **libucl project** ([vstakhov/libucl](https://github.com/vstakhov/libucl)) for the excellent UCL C library
-- **Koffi project** for enabling seamless FFI bindings to C libraries in Node.js
-- **Edge computing platforms** for API documentation and deployment examples
-- **TypeScript community** for robust typing and tooling ecosystem
+- **nginx Inc.** - For the official crossplane library
+- **CloudFlare** - For the Workers platform
+- **Vercel** - For Next.js and edge middleware capabilities
+- **nginx community** - For comprehensive documentation and configuration standards
+- **TypeScript community** - For robust typing and tooling ecosystem
 
