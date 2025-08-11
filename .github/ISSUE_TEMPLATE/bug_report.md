@@ -27,7 +27,7 @@ If applicable, add your nginx configuration file that causes the issue.
  - OS: [e.g. macOS, Ubuntu 22.04]
  - Node.js version: [e.g. 18.17.0]
  - nginx-to-edge-js version: [e.g. 1.0.0]
- - libucl version: [run `ucl_tool -h` to check]
+ - crossplane version: [run `crossplane --version` to check]
 
 **Additional context**
 Add any other context about the problem here.

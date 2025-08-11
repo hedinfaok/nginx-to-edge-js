@@ -114,7 +114,7 @@ Configuration transformation builds complex objects step by step:
 
 ```typescript
 class ConfigTransformer {
-  transformUCLToNginx(raw: any): NginxConfig {
+  transformCrossplaneToNginx(raw: any): NginxConfig {
     return {
       servers: this.processServers(raw.server),
       upstreams: this.processUpstreams(raw.upstream),
@@ -177,7 +177,7 @@ generate(): string {
 ## Error Handling
 
 ### 1. Parsing Errors
-- UCL syntax errors
+- nginx syntax errors
 - Invalid nginx directives
 - Missing required configurations
 
@@ -212,8 +212,8 @@ generate(): string {
 ## Performance Considerations
 
 ### 1. Parsing Performance
-- libucl provides efficient UCL parsing
-- Minimal preprocessing for nginx compatibility
+- crossplane provides efficient nginx parsing
+- Direct nginx syntax compatibility
 - Streaming support for large configurations
 
 ### 2. Memory Usage
