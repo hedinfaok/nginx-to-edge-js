@@ -161,14 +161,19 @@ nginx-to-edge-js/
 # macOS
 brew install libucl
 
-# Ubuntu/Debian  
-sudo apt-get install libucl-dev
+# Ubuntu/Debian (build FreeBSD libucl from source)
+sudo apt-get install -y build-essential cmake git autotools-dev autoconf libtool pkg-config
+git clone https://github.com/vstakhov/libucl.git /tmp/libucl
+cd /tmp/libucl
+./autogen.sh
+./configure --prefix=/usr/local
+make
+sudo make install
+sudo ldconfig
 
 # CentOS/RHEL
 sudo yum install libucl-devel
-```
-
-**2. Install crossplane** (required for nginx parsing):
+```**2. Install crossplane** (required for nginx parsing):
 
 ```bash
 pip3 install crossplane
@@ -683,3 +688,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Koffi project** for enabling seamless FFI bindings to C libraries in Node.js
 - **Edge computing platforms** for API documentation and deployment examples
 - **TypeScript community** for robust typing and tooling ecosystem
+
