@@ -4,7 +4,6 @@
 export { NginxParser } from '../src/converters/nginx-parser';
 
 // Core components
-export { ConfigTransformer } from './core/transformer';
 export { BaseGenerator } from './generators/base-generator';
 export { CloudFlareGenerator } from './generators/cloudflare';
 export { NextJSGenerator } from './generators/nextjs-middleware';
