@@ -1,0 +1,274 @@
+# Platform Support
+
+## Overview
+
+This document details platform-specific implementation notes, supported features, and limitations for each target platform.
+
+## CloudFlare Workers
+
+### Implementation Details
+
+**File:** `src/generators/cloudflare.ts`  
+**Output:** JavaScript (ES2020+)  
+**Runtime:** V8 Isolate  
+
+### Supported nginx Directives
+
+#### ✅ Core Directives
+- `listen` → Handled via route matching
+- `server_name` → Host header validation
+- `location` → Route patterns and handlers
+- `return` → Response with status/body/redirect
+- `rewrite` → URL transformation rules
+
+#### ✅ Proxy Directives
+- `proxy_pass` → `fetch()` to upstream
+- `proxy_set_header` → Custom request headers
+- `proxy_hide_header` → Response header filtering
+- `proxy_redirect` → Location header rewriting
+
+#### ✅ Headers
+- `add_header` → Custom response headers
+- `more_set_headers` → Advanced header manipulation
+
+#### ⚠️ Limited Support
+- `proxy_cache` → Uses CF Cache API (simplified)
+- `gzip` → Automatic in CF Workers
+- `ssl_*` → Handled by CloudFlare edge
+
+#### ❌ Not Supported
+- `fastcgi_pass` → No FastCGI in Workers
+- `uwsgi_pass` → No uWSGI in Workers  
+- `auth_basic` → Use CF Access instead
+- `limit_req` → Use CF Rate Limiting
+
+### Code Generation Patterns
+
+```javascript
+// Location block → Route handler
+location /api/ {
+    proxy_pass http://backend;
+    add_header X-Custom "value";
+}
+
+// Generates:
+if (url.pathname.startsWith('/api/')) {
+    const response = await fetch('http://backend' + url.pathname);
+    response.headers.set('X-Custom', 'value');
+    return response;
+}
+```
+
+### Platform Limitations
+
+- **Request Size:** 100MB max
+- **Response Size:** 100MB max  
+- **CPU Time:** 50ms on free tier, 30s on paid
+- **Memory:** 128MB
+- **Subrequests:** Limited by CPU time
+
+## Next.js Middleware
+
+### Implementation Details
+
+**File:** `src/generators/nextjs-middleware.ts`  
+**Output:** TypeScript (ES2022+)  
+**Runtime:** Edge Runtime (V8)
+
+### Supported nginx Directives
+
+#### ✅ Core Directives
+- `server_name` → Host header matching
+- `location` → Route matching patterns
+- `return` → NextResponse redirects/rewrites
+- `rewrite` → URL rewriting rules
+
+#### ✅ Routing
+- `try_files` → Fallback chains
+- `index` → Default file serving
+- `alias` → Path mapping
+
+#### ✅ Headers
+- `add_header` → Response headers
+- `proxy_set_header` → Request headers (limited)
+
+#### ⚠️ Limited Support
+- `proxy_pass` → Rewrite to internal routes only
+- `upstream` → Load balancing via rewrites
+- `error_page` → Custom error pages
+
+#### ❌ Not Supported
+- `proxy_pass` (external) → Use API routes instead
+- `fastcgi_pass` → Use API routes instead
+- `auth_basic` → Use NextAuth.js instead
+- `limit_req` → Use Vercel rate limiting
+
+### Code Generation Patterns
+
+```typescript
+// Rewrite rule
+rewrite ^/old/(.*)$ /new/$1 permanent;
+
+// Generates:
+if (pathname.startsWith('/old/')) {
+    const newPath = pathname.replace(/^\/old\/(.*)$/, '/new/$1');
+    return NextResponse.redirect(new URL(newPath, request.url), 301);
+}
+```
+
+### Platform Limitations
+
+- **Request Size:** 4MB max
+- **Response Size:** 4MB max
+- **CPU Time:** 25ms max
+- **Memory:** 64MB max
+- **External Requests:** Not allowed in middleware
+
+## AWS Lambda@Edge *(Planned)*
+
+### Implementation Details
+
+**File:** `src/generators/lambda-edge.ts` *(Future)*  
+**Output:** JavaScript (Node.js 18)  
+**Runtime:** AWS Lambda  
+
+### Planned Support
+
+#### ✅ Core Directives
+- `listen` → CloudFront behavior matching
+- `server_name` → Host header validation
+- `location` → Path pattern matching
+- `return` → Lambda response generation
+
+#### ✅ CloudFront Integration
+- `proxy_pass` → Origin request modification
+- `add_header` → Response header manipulation
+- `proxy_cache` → CloudFront caching rules
+
+#### Limitations
+- **Cold Starts:** 50-100ms typical
+- **Timeout:** 5s viewer, 30s origin functions
+- **Memory:** 128MB-10GB configurable
+- **Regions:** Limited edge locations
+
+## Platform Comparison
+
+| Feature | CloudFlare | Next.js | Lambda@Edge |
+|---------|------------|---------|-------------|
+| **Runtime** | V8 Isolate | V8 Edge | Node.js |
+| **Max Request** | 100MB | 4MB | 6MB |
+| **Max Response** | 100MB | 4MB | 1MB |
+| **CPU Timeout** | 30s | 25ms | 30s |
+| **External Fetch** | ✅ Full | ❌ None | ✅ Limited |
+| **Startup Time** | <1ms | <1ms | 50-100ms |
+| **Global Regions** | 300+ | 18+ | 13+ |
+
+## Best Practices
+
+### CloudFlare Workers
+
+```javascript
+// Efficient request handling
+export default {
+    async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+        
+        // Handle static assets
+        if (url.pathname.startsWith('/static/')) {
+            return fetch(request); // Pass through to origin
+        }
+        
+        // Handle API routes
+        if (url.pathname.startsWith('/api/')) {
+            return handleAPI(request, env);
+        }
+        
+        // Default handling
+        return fetch(request);
+    }
+};
+```
+
+### Next.js Middleware
+
+```typescript
+// Efficient middleware
+export function middleware(request: NextRequest) {
+    const { pathname } = request.nextUrl;
+    
+    // Early returns for performance
+    if (pathname.startsWith('/api/')) {
+        return NextResponse.next();
+    }
+    
+    // Conditional logic
+    if (pathname.startsWith('/admin/')) {
+        return handleAdminRoutes(request);
+    }
+    
+    return NextResponse.next();
+}
+
+export const config = {
+    matcher: [
+        '/((?!_next/static|favicon.ico).*)',
+    ],
+};
+```
+
+## Testing Platform Compatibility
+
+### CloudFlare Workers
+
+```bash
+# Local development
+npm install -g wrangler
+wrangler dev
+
+# Test generated worker
+wrangler publish --dry-run
+```
+
+### Next.js Middleware
+
+```bash
+# Local development
+npm run dev
+
+# Test middleware
+curl -H "Host: example.com" http://localhost:3000/test-path
+```
+
+### Validation Scripts
+
+```typescript
+// Validate generated code
+import { validateCloudFlareWorker } from './validators/cloudflare';
+import { validateNextJSMiddleware } from './validators/nextjs';
+
+const workerCode = generator.generate();
+const validation = validateCloudFlareWorker(workerCode);
+
+if (!validation.isValid) {
+    console.error('Generated code validation failed:', validation.errors);
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**CloudFlare Workers:**
+- Exceeding CPU limits → Optimize async operations
+- Memory issues → Reduce object allocations
+- Fetch failures → Check CORS and SSL
+
+**Next.js Middleware:**
+- Response size limits → Move logic to API routes
+- External fetch errors → Use API routes instead
+- Performance issues → Minimize middleware logic
+
+**General:**
+- nginx directive not supported → Check platform limitations
+- Generated code errors → Validate nginx config first
+- Performance issues → Review generated patterns
