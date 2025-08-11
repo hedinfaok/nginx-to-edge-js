@@ -75,10 +75,12 @@ jobs:
         node dist/src/cli/index.js generate cloudflare examples/basic-reverse-proxy/nginx.conf --output test-worker.js
         echo "=== Testing Next.js middleware generation ==="
         node dist/src/cli/index.js generate nextjs examples/basic-reverse-proxy/nginx.conf --output test-middleware.ts
+        echo "=== Testing AWS Lambda@Edge generation ==="
+        node dist/src/cli/index.js generate lambda-edge examples/basic-reverse-proxy/nginx.conf --output test-lambda-edge.js
         echo "=== Testing all platforms generation ==="
         node dist/src/cli/index.js generate all examples/basic-reverse-proxy/nginx.conf --output-dir test-output
         echo "=== Verifying generated files ==="
-        ls -la test-worker.js test-middleware.ts test-output/
+        ls -la test-worker.js test-middleware.ts test-lambda-edge.js test-output/
         echo "=== Testing npm link ==="
         npm link
         echo "=== Testing global CLI ==="

@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { nginxParser } from '../converters/nginx-parser.js';
 import { CloudFlareGenerator } from '../generators/cloudflare.js';
 import { NextJSGenerator } from '../generators/nextjs-middleware.js';
+import { LambdaEdgeGenerator } from '../generators/lambda-edge.js';
 import { ParsedNginxConfig, NginxConfig, ServerBlock, LocationBlock } from '../core/config-model.js';
 import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
@@ -219,7 +220,7 @@ program
 program
   .command('generate')
   .description('Generate edge platform code from nginx configuration')
-  .argument('<platform>', 'target platform (cloudflare, nextjs, all)')
+  .argument('<platform>', 'target platform (cloudflare, nextjs, lambda-edge, all)')
   .argument('<file>', 'nginx configuration file')
   .option('-o, --output <file>', 'output file path')
   .option('-d, --output-dir <dir>', 'output directory (for "all" platform)')
@@ -272,6 +273,17 @@ program
           console.error(`❌ Next.js generation failed: ${error instanceof Error ? error.message : error}`);
         }
         
+        // AWS Lambda@Edge
+        try {
+          const lambdaGenerator = new LambdaEdgeGenerator(transformedConfig);
+          const lambdaCode = lambdaGenerator.generate();
+          const lambdaPath = join(outputDir, 'lambda-edge.js');
+          writeFileSync(lambdaPath, lambdaCode);
+          console.log(`✅ AWS Lambda@Edge: ${lambdaPath}`);
+        } catch (error) {
+          console.error(`❌ Lambda@Edge generation failed: ${error instanceof Error ? error.message : error}`);
+        }
+        
       } else if (platform === 'cloudflare') {
         // Generate CloudFlare Workers
         console.log(`🚀 Generating CloudFlare Workers...`);
@@ -300,9 +312,23 @@ program
         
         console.log(`✅ Next.js Middleware code generated: ${outputPath}`);
         
+      } else if (platform === 'lambda-edge') {
+        // Generate AWS Lambda@Edge
+        console.log(`🚀 Generating AWS Lambda@Edge...`);
+        
+        const generator = new LambdaEdgeGenerator(transformedConfig);
+        const code = generator.generate();
+        
+        const outputPath = options.output || 'lambda-edge.js';
+        const outputDir = dirname(outputPath);
+        mkdirSync(outputDir, { recursive: true });
+        writeFileSync(outputPath, code);
+        
+        console.log(`✅ AWS Lambda@Edge code generated: ${outputPath}`);
+        
       } else {
         console.error(`❌ Unknown platform: ${platform}`);
-        console.error('Supported platforms: cloudflare, nextjs, all');
+        console.error('Supported platforms: cloudflare, nextjs, lambda-edge, all');
         process.exit(1);
       }
       

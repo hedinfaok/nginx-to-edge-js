@@ -18,6 +18,9 @@ npm run cli generate cloudflare examples/basic-reverse-proxy/nginx.conf
 
 # Generate Next.js middleware from nginx config  
 npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
+
+# Generate AWS Lambda@Edge from nginx config
+npm run cli generate lambda-edge examples/basic-reverse-proxy/nginx.conf
 ```
 
 ## Features
@@ -25,6 +28,7 @@ npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 - **Official nginx Parser** - Uses nginx Inc.'s crossplane library
 - **CloudFlare Workers** - Generate worker.js files  
 - **Next.js Middleware** - Generate middleware.ts files
+- **AWS Lambda@Edge** - Generate lambda-edge.js files
 - **TypeScript Support** - Full type safety throughout
 
 ## CLI Commands
@@ -33,6 +37,7 @@ npm run cli generate nextjs examples/basic-reverse-proxy/nginx.conf
 # Generate for specific platform
 npm run cli generate cloudflare <nginx-file>
 npm run cli generate nextjs <nginx-file>
+npm run cli generate lambda-edge <nginx-file>
 
 # Custom output path
 npm run cli generate cloudflare <nginx-file> --output my-worker.js

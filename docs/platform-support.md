@@ -124,32 +124,71 @@ if (pathname.startsWith('/old/')) {
 - **Memory:** 64MB max
 - **External Requests:** Not allowed in middleware
 
-## AWS Lambda@Edge *(Planned)*
+## AWS Lambda@Edge
 
 ### Implementation Details
 
-**File:** `src/generators/lambda-edge.ts` *(Future)*  
+**File:** `src/generators/lambda-edge.ts`  
 **Output:** JavaScript (Node.js 18)  
-**Runtime:** AWS Lambda  
+**Runtime:** AWS Lambda at CloudFront Edge  
 
-### Planned Support
+### Supported nginx Directives
 
 #### ✅ Core Directives
 - `listen` → CloudFront behavior matching
 - `server_name` → Host header validation
-- `location` → Path pattern matching
+- `location` → Path pattern matching  
 - `return` → Lambda response generation
+- `rewrite` → URL transformation rules
 
 #### ✅ CloudFront Integration
 - `proxy_pass` → Origin request modification
+- `proxy_set_header` → Request header manipulation
 - `add_header` → Response header manipulation
-- `proxy_cache` → CloudFront caching rules
+- `proxy_hide_header` → Response header filtering
 
-#### Limitations
-- **Cold Starts:** 50-100ms typical
-- **Timeout:** 5s viewer, 30s origin functions
+#### ⚠️ Limited Support
+- `proxy_cache` → Use CloudFront caching rules
+- `gzip` → Handled by CloudFront
+- `ssl_*` → Managed by CloudFront
+
+#### ❌ Not Supported
+- `fastcgi_pass` → No FastCGI support
+- `uwsgi_pass` → No uWSGI support
+- `auth_basic` → Use AWS Cognito instead
+- `limit_req` → Use AWS WAF instead
+
+### Code Generation Patterns
+
+```javascript
+// Location block → Lambda@Edge function
+location /api/ {
+    proxy_pass http://backend:3000;
+    proxy_set_header Host $host;
+}
+
+// Generates:
+if (matchesPath(uri, "/api/")) {
+    request.origin = {
+        custom: {
+            domainName: 'backend',
+            port: 3000,
+            protocol: 'http',
+            path: '/'
+        }
+    };
+    request.headers['host'] = [{ key: 'Host', value: request.headers.host[0].value }];
+}
+```
+
+### Platform Limitations
+
+- **Request Size:** 6MB max (viewer), 20MB (origin)
+- **Response Size:** 1MB max (viewer), 20MB (origin)  
+- **CPU Time:** 5s viewer functions, 30s origin functions
 - **Memory:** 128MB-10GB configurable
-- **Regions:** Limited edge locations
+- **Regions:** Limited to CloudFront edge locations
+- **Cold Starts:** 50-100ms typical
 
 ## Platform Comparison
 
@@ -216,6 +255,42 @@ export const config = {
 };
 ```
 
+### AWS Lambda@Edge
+
+```javascript
+// Efficient Lambda@Edge handler
+exports.handler = async (event) => {
+    const request = event.Records[0].cf.request;
+    const eventType = event.Records[0].cf.eventType;
+    
+    // Handle only necessary event types
+    switch (eventType) {
+        case 'viewer-request':
+            return handleViewerRequest(request);
+        case 'origin-request':
+            return handleOriginRequest(request);
+        default:
+            return request;
+    }
+};
+
+function handleViewerRequest(request) {
+    const uri = request.uri;
+    
+    // Early returns for performance
+    if (uri.startsWith('/static/')) {
+        return request; // Pass through to origin
+    }
+    
+    // Conditional routing
+    if (uri.startsWith('/api/')) {
+        return handleAPIRoutes(request);
+    }
+    
+    return request;
+}
+```
+
 ## Testing Platform Compatibility
 
 ### CloudFlare Workers
@@ -237,6 +312,19 @@ npm run dev
 
 # Test middleware
 curl -H "Host: example.com" http://localhost:3000/test-path
+```
+
+### AWS Lambda@Edge
+
+```bash
+# Local testing with SAM CLI
+sam local start-api
+
+# Test generated Lambda function
+sam deploy --guided
+
+# CloudFormation deployment
+aws cloudformation deploy --template-file template.yaml --stack-name my-edge-stack
 ```
 
 ### Validation Scripts
@@ -267,6 +355,12 @@ if (!validation.isValid) {
 - Response size limits → Move logic to API routes
 - External fetch errors → Use API routes instead
 - Performance issues → Minimize middleware logic
+
+**AWS Lambda@Edge:**
+- Cold start latency → Optimize function size and dependencies
+- Response size limits → Use origin functions for large responses
+- Timeout errors → Split complex logic across event types
+- CloudFront integration → Validate behavior path patterns
 
 **General:**
 - nginx directive not supported → Check platform limitations
