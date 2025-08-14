@@ -3,6 +3,9 @@
 // Primary parser (crossplane-based, nginx Inc. official parser)
 export { NginxParser } from '../src/converters/nginx-parser';
 
+// Transformation utilities
+export { convertCrossplaneToConfig, convertServerBlock, convertLocationBlock } from './core/transformer';
+
 // Core components
 export { BaseGenerator } from './generators/base-generator';
 export { CloudFlareGenerator } from './generators/cloudflare';
