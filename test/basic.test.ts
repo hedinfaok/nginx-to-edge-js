@@ -1,79 +1,15 @@
 import { NginxParser } from '../src/converters/nginx-parser';
 import { CloudFlareGenerator } from '../src/generators/cloudflare';
-import { ParsedNginxConfig, NginxConfig, ServerBlock } from '../src/core/config-model';
-
-// Copy the converter function from CLI for testing
-function convertCrossplaneToConfig(parseResult: any): ParsedNginxConfig {
-  const config: NginxConfig = {
-    servers: [],
-    upstreams: [],
-    global: {}
-  };
-
-  if (parseResult.config && parseResult.config.length > 0) {
-    const nginxConfig = parseResult.config[0];
-    if (nginxConfig.parsed) {
-      for (const directive of nginxConfig.parsed) {
-        if (directive.directive === 'http' && directive.block) {
-          for (const httpDirective of directive.block) {
-            if (httpDirective.directive === 'server') {
-              const server = convertServerBlock(httpDirective);
-              config.servers.push(server);
-            }
-          }
-        } else if (directive.directive === 'server') {
-          const server = convertServerBlock(directive);
-          config.servers.push(server);
-        }
-      }
-    }
-  }
-
-  return {
-    ...config,
-    metadata: {
-      parsed_at: new Date(),
-      parser_version: 'crossplane-1.0.0',
-      warnings: []
-    }
-  };
-}
-
-function convertServerBlock(directive: any): ServerBlock {
-  const server: ServerBlock = {
-    listen: [],
-    server_name: [],
-    locations: []
-  };
-
-  if (directive.block) {
-    for (const subDirective of directive.block) {
-      switch (subDirective.directive) {
-        case 'listen':
-          server.listen.push({ port: parseInt(subDirective.args[0]) });
-          break;
-        case 'server_name':
-          server.server_name = subDirective.args;
-          break;
-        case 'location':
-          const proxyPassDirective = subDirective.block?.find((d: any) => d.directive === 'proxy_pass');
-          server.locations.push({
-            path: subDirective.args[0],
-            directives: {
-              proxy_pass: proxyPassDirective?.args?.[0]
-            }
-          });
-          break;
-      }
-    }
-  }
-
-  return server;
-}
+import { convertCrossplaneToConfig } from '../src/core/transformer';
 
 describe('NginxParser', () => {
-  test('should parse basic nginx configuration', async () => {
-    const parser = new NginxParser();
+  let parser: NginxParser;
+
+  beforeEach(() => {
+    parser = new NginxParser();
+  });
+
+  test('should parse basic nginx configuration with http block', async () => {
     const nginxConfig = `
 http {
     server {
@@ -83,6 +19,10 @@ http {
         location / {
             proxy_pass http://backend:3000;
         }
+        
+        location /api {
+            proxy_pass http://api-backend:8080;
+        }
     }
 }`;
 
@@ -90,27 +30,125 @@ http {
     const config = convertCrossplaneToConfig(parseResult);
     
     expect(config.servers).toHaveLength(1);
-    expect(config.servers[0].listen).toHaveLength(1);
-    expect(config.servers[0].listen[0].port).toBe(80);
-    expect(config.servers[0].server_name).toEqual(['example.com']);
-    expect(config.servers[0].locations).toHaveLength(1);
-    expect(config.servers[0].locations[0].path).toBe('/');
+    
+    const server = config.servers[0];
+    expect(server.listen).toHaveLength(1);
+    expect(server.listen[0].port).toBe(80);
+    expect(server.server_name).toEqual(['example.com']);
+    expect(server.locations).toHaveLength(2);
+    
+    // Test location details
+    expect(server.locations[0].path).toBe('/');
+    expect(server.locations[0].directives.proxy_pass).toBe('http://backend:3000');
+    
+    expect(server.locations[1].path).toBe('/api');
+    expect(server.locations[1].directives.proxy_pass).toBe('http://api-backend:8080');
+  });
+
+  test('should parse server block at top level', async () => {
+    const nginxConfig = `
+http {
+    server {
+        listen 443 ssl;
+        server_name secure.example.com;
+        
+        location / {
+            return 301 https://example.com$request_uri;
+        }
+    }
+}`;
+
+    const parseResult = await parser.parseString(nginxConfig);
+    const config = convertCrossplaneToConfig(parseResult);
+    
+    expect(config.servers).toHaveLength(1);
+    
+    const server = config.servers[0];
+    expect(server.listen[0].port).toBe(443);
+    expect(server.server_name).toEqual(['secure.example.com']);
+    expect(server.locations).toHaveLength(1);
+    expect(server.locations[0].directives.return).toEqual({
+      code: 301,
+      url: 'https://example.com$request_uri'
+    });
+  });
+
+  test('should handle multiple servers', async () => {
+    const nginxConfig = `
+http {
+    server {
+        listen 80;
+        server_name site1.com;
+        location / {
+            root /var/www/site1;
+        }
+    }
+    
+    server {
+        listen 80;
+        server_name site2.com;
+        location / {
+            root /var/www/site2;
+        }
+    }
+}`;
+
+    const parseResult = await parser.parseString(nginxConfig);
+    const config = convertCrossplaneToConfig(parseResult);
+    
+    expect(config.servers).toHaveLength(2);
+    expect(config.servers[0].server_name).toEqual(['site1.com']);
+    expect(config.servers[1].server_name).toEqual(['site2.com']);
+    expect(config.servers[0].locations[0].directives.root).toBe('/var/www/site1');
+    expect(config.servers[1].locations[0].directives.root).toBe('/var/www/site2');
+  });
+
+  test('should handle location with add_header directives', async () => {
+    const nginxConfig = `
+http {
+    server {
+        listen 80;
+        location /static {
+            root /var/www;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            add_header X-Custom-Header "test-value";
+        }
+    }
+}`;
+
+    const parseResult = await parser.parseString(nginxConfig);
+    const config = convertCrossplaneToConfig(parseResult);
+    
+    const location = config.servers[0].locations[0];
+    expect(location.path).toBe('/static');
+    expect(location.directives.root).toBe('/var/www');
+    expect(location.directives.expires).toBe('1y');
+    expect(location.directives.add_header).toEqual({
+      'Cache-Control': 'public, immutable',
+      'X-Custom-Header': 'test-value'
+    });
   });
 
   test('should handle parse errors gracefully', async () => {
     const parser = new NginxParser();
     
-    try {
-      await parser.parseString('invalid nginx config {{{');
-      fail('Should have thrown an error');
-    } catch (error) {
-      expect(error).toBeDefined();
-    }
+    await expect(parser.parseString('invalid nginx config {{{')).rejects.toThrow();
+  });
+
+  test('should handle empty configuration', async () => {
+    const parser = new NginxParser();
+    const parseResult = await parser.parseString('');
+    const config = convertCrossplaneToConfig(parseResult);
+    
+    expect(config.servers).toHaveLength(0);
+    expect(config.metadata).toBeDefined();
+    expect(config.metadata.parser_version).toBe('crossplane-1.0.0');
   });
 });
 
 describe('CloudFlareGenerator', () => {
-  test('should generate CloudFlare Workers code', async () => {
+  test('should generate CloudFlare Workers code from parsed config', async () => {
     const parser = new NginxParser();
     const parseResult = await parser.parseString(`
 http {
@@ -119,6 +157,9 @@ http {
         server_name example.com;
         location / {
             proxy_pass http://backend:3000;
+        }
+        location /api {
+            proxy_pass http://api-backend:8080;
         }
     }
 }`);
@@ -130,5 +171,29 @@ http {
     expect(code).toContain('addEventListener("fetch"');
     expect(code).toContain('handleRequest');
     expect(code).toContain('backend:3000');
+    expect(code).toContain('api-backend:8080');
+    expect(code).toContain('example.com');
+  });
+
+  test('should handle redirects in generated code', async () => {
+    const parser = new NginxParser();
+    const parseResult = await parser.parseString(`
+http {
+    server {
+        listen 80;
+        server_name old-site.com;
+        location / {
+            return 301 https://new-site.com$request_uri;
+        }
+    }
+}`);
+
+    const config = convertCrossplaneToConfig(parseResult);
+    const generator = new CloudFlareGenerator(config);
+    const code = generator.generate();
+    
+    expect(code).toContain('301');
+    expect(code).toContain('new-site.com');
+    expect(code).toContain('old-site.com');
   });
 });
