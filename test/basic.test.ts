@@ -1,4 +1,4 @@
-import { NginxParser } from '../src/parser/nginx-parser';
+import { NginxParser } from '../src/converters/nginx-parser';
 import { CloudFlareGenerator } from '../src/generators/cloudflare';
 import { ParsedNginxConfig, NginxConfig, ServerBlock } from '../src/core/config-model';
 
