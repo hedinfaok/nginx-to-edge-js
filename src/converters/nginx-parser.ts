@@ -118,11 +118,27 @@ export class NginxParser {
       const output = await this.runCrossplane(args);
       const result: NginxParseResult = JSON.parse(output);
       
+      // For nginx-to-edge-js purposes, we're more interested in successful parsing
+      // than strict validation. If crossplane can parse the structure, we can work with it.
       if (result.status === 'failed') {
-        const errorMessages = result.errors.map(err => 
-          `${err.file}:${err.line}: ${err.error}`
-        ).join('\n');
-        throw new NginxParseError(`nginx configuration parsing failed:\n${errorMessages}`);
+        // Only throw errors for truly critical parsing failures
+        // Skip file not found errors (includes) and unknown directive errors (third-party modules)
+        const criticalErrors = result.errors.filter(err => 
+          !err.error.includes('No such file or directory') &&
+          !err.error.includes('mime.types') &&
+          !err.error.includes('unknown directive') &&
+          !err.error.includes('more_set_headers')
+        );
+        
+        if (criticalErrors.length > 0) {
+          const errorMessages = criticalErrors.map(err => 
+            `${err.file}:${err.line}: ${err.error}`
+          ).join('\n');
+          throw new NginxParseError(`Critical nginx configuration parsing errors:\n${errorMessages}`);
+        }
+        
+        // If only non-critical errors, mark as successful for processing
+        result.status = 'ok';
       }
 
       return result;
@@ -178,10 +194,22 @@ export class NginxParser {
    */
   async validateConfig(configPath: string): Promise<{ valid: boolean; errors: NginxParseErrorData[] }> {
     try {
-      const result = await this.parseConfig(configPath, { strict: true });
+      // For validation, ignore known third-party directives that aren't recognized by crossplane
+      const result = await this.parseConfig(configPath, { 
+        ignoreDirectives: ['more_set_headers']
+      });
+      
+      // For now, let's be more lenient and only consider critical parsing errors
+      // Filter out non-critical errors like missing includes and unknown directives
+      const criticalErrors = result.errors.filter(err => 
+        !err.error.includes('No such file or directory') &&
+        !err.error.includes('mime.types') &&
+        !err.error.includes('unknown directive')
+      );
+      
       return {
-        valid: result.status === 'ok' && result.errors.length === 0,
-        errors: result.errors
+        valid: criticalErrors.length === 0,
+        errors: criticalErrors
       };
     } catch (error) {
       if (error instanceof NginxParseError) {

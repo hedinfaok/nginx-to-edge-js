@@ -235,11 +235,27 @@ program
       const parseResult = await nginxParser.parseConfig(file);
       
       if (parseResult.status === 'failed') {
-        console.error('❌ Parsing failed:');
+        // Filter out non-critical errors for generation purposes
+        const criticalErrors = parseResult.errors.filter((error: any) => 
+          !error.error.includes('No such file or directory') &&
+          !error.error.includes('mime.types') &&
+          !error.error.includes('unknown directive') &&
+          !error.error.includes('more_set_headers')
+        );
+        
+        if (criticalErrors.length > 0) {
+          console.error('❌ Critical parsing errors:');
+          criticalErrors.forEach((error: any) => {
+            console.error(`  ${error.file}:${error.line}: ${error.error}`);
+          });
+          process.exit(1);
+        }
+        
+        // If only non-critical errors, continue with generation
+        console.log('⚠️  Non-critical parsing warnings (continuing with generation):');
         parseResult.errors.forEach((error: any) => {
-          console.error(`  ${error.file}:${error.line}: ${error.error}`);
+          console.log(`  ${error.file}:${error.line}: ${error.error}`);
         });
-        process.exit(1);
       }
       
       // Transform crossplane JSON to our config model
