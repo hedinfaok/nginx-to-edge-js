@@ -180,7 +180,15 @@ export class CloudFlareGenerator extends BaseGenerator {
     if (location.directives.proxy_pass) {
       const backend = location.directives.proxy_pass;
       actions.push(`${indent}// Proxy to: ${backend}`);
-      actions.push(`${indent}return await proxyRequest(request, "${backend}", url);`);
+      
+      // Generate proxy headers
+      const proxyHeaders = this.generateProxyHeaders(location, indent);
+      if (proxyHeaders.length > 0) {
+        actions.push(...proxyHeaders);
+        actions.push(`${indent}return await proxyRequest(request, "${backend}", url, proxyHeaders);`);
+      } else {
+        actions.push(`${indent}return await proxyRequest(request, "${backend}", url);`);
+      }
       return actions;
     }
 
@@ -196,10 +204,68 @@ export class CloudFlareGenerator extends BaseGenerator {
     return actions;
   }
 
+  private generateProxyHeaders(location: LocationBlock, indent: string): string[] {
+    const headers: string[] = [];
+    
+    // Generate proxy_set_header directives
+    if (location.directives.proxy_set_header) {
+      headers.push(`${indent}const proxyHeaders = new Map();`);
+      Object.entries(location.directives.proxy_set_header).forEach(([header, value]) => {
+        // Handle nginx variables in header values
+        const processedValue = this.processNginxVariables(value);
+        headers.push(`${indent}proxyHeaders.set("${header}", ${processedValue});`);
+      });
+    }
+    
+    // Generate proxy_hide_header directives
+    if (location.directives.proxy_hide_header) {
+      if (headers.length === 0) {
+        headers.push(`${indent}const proxyHeaders = new Map();`);
+      }
+      location.directives.proxy_hide_header.forEach(header => {
+        headers.push(`${indent}proxyHeaders.set("hide-${header}", true);`);
+      });
+    }
+    
+    return headers;
+  }
+
+  private processNginxVariables(value: string): string {
+    // Handle empty string case
+    if (!value || value === '""' || value === "''") {
+      return '""';
+    }
+    
+    // Process common nginx variables
+    let processed = value
+      .replace(/\$remote_addr/g, 'request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || ""')
+      .replace(/\$http_([a-zA-Z_-]+)/g, (match, headerName) => {
+        // Convert nginx header format to standard HTTP header format
+        const httpHeader = headerName.replace(/_/g, '-').toLowerCase();
+        return `request.headers.get("${httpHeader}") || ""`;
+      })
+      .replace(/\$request_uri/g, 'url.pathname + url.search')
+      .replace(/\$uri/g, 'url.pathname')
+      .replace(/\$host/g, 'url.hostname')
+      .replace(/\$server_name/g, 'url.hostname')
+      .replace(/\$scheme/g, 'url.protocol.slice(0, -1)') // Remove trailing ':'
+      .replace(/\$server_port/g, 'url.port || (url.protocol === "https:" ? "443" : "80")')
+      .replace(/\$proxy_add_x_forwarded_for/g, 'request.headers.get("X-Forwarded-For") ? request.headers.get("X-Forwarded-For") + ", " + (request.headers.get("CF-Connecting-IP") || "") : (request.headers.get("CF-Connecting-IP") || "")')
+      .replace(/\$msec/g, 'Date.now().toString()');
+    
+    // If the value contains variables, it's already a JavaScript expression
+    if (processed.includes('request.headers.get') || processed.includes('url.')) {
+      return processed;
+    }
+    
+    // If no variables, wrap in quotes
+    return `"${processed}"`;
+  }
+
   private generateHelperFunctions(): string[] {
     return [
       '// Helper function to proxy requests',
-      'async function proxyRequest(request, backend, url) {',
+      'async function proxyRequest(request, backend, url, customHeaders = new Map()) {',
       '  const backendUrl = new URL(backend);',
       '  const proxyUrl = new URL(url.pathname + url.search, backendUrl);',
       '',
@@ -208,6 +274,15 @@ export class CloudFlareGenerator extends BaseGenerator {
       '  headers.set("Host", backendUrl.hostname);',
       '  headers.set("X-Forwarded-For", request.headers.get("CF-Connecting-IP") || "");',
       '  headers.set("X-Real-IP", request.headers.get("CF-Connecting-IP") || "");',
+      '',
+      '  // Apply custom proxy headers',
+      '  for (const [key, value] of customHeaders) {',
+      '    if (key.startsWith("hide-")) {',
+      '      headers.delete(key.substring(5));',
+      '    } else {',
+      '      headers.set(key, value);',
+      '    }',
+      '  }',
       '',
       '  const response = await fetch(proxyUrl, {',
       '    method: request.method,',
@@ -218,6 +293,13 @@ export class CloudFlareGenerator extends BaseGenerator {
       '  // Copy response headers',
       '  const responseHeaders = new Headers(response.headers);',
       '  ',
+      '  // Apply proxy_hide_header to response',
+      '  for (const [key, value] of customHeaders) {',
+      '    if (key.startsWith("hide-") && typeof value === "boolean") {',
+      '      responseHeaders.delete(key.substring(5));',
+      '    }',
+      '  }',
+      '',
       '  return new Response(response.body, {',
       '    status: response.status,',
       '    statusText: response.statusText,',

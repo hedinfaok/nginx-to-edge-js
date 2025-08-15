@@ -50,6 +50,8 @@ export interface LocationDirectives {
   return?: ReturnDirective;
   add_header?: Record<string, string>;
   proxy_set_header?: Record<string, string>;
+  proxy_hide_header?: string[];
+  set?: Record<string, string>;
   expires?: string;
   try_files?: string[];
   alias?: string;

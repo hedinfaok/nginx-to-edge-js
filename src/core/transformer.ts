@@ -113,6 +113,27 @@ export function convertLocationBlock(directive: any): LocationBlock {
           }
           location.directives.add_header[locationDirective.args[0]] = locationDirective.args[1];
           break;
+        case 'proxy_set_header':
+          if (!location.directives.proxy_set_header) {
+            location.directives.proxy_set_header = {};
+          }
+          location.directives.proxy_set_header[locationDirective.args[0]] = locationDirective.args[1];
+          break;
+        case 'proxy_hide_header':
+          if (!location.directives.proxy_hide_header) {
+            location.directives.proxy_hide_header = [];
+          }
+          location.directives.proxy_hide_header.push(locationDirective.args[0]);
+          break;
+        case 'set':
+          if (!location.directives.set) {
+            location.directives.set = {};
+          }
+          // nginx set directive: set $variable value;
+          // args[0] is the variable name (with $), args[1] is the value
+          const varName = locationDirective.args[0].replace(/^\$/, ''); // Remove leading $
+          location.directives.set[varName] = locationDirective.args[1];
+          break;
       }
     }
   }
