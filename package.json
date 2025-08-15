@@ -14,7 +14,12 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
     "start": "node dist/cli/index.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "convert-examples": "node scripts/convert-examples.js",
+    "convert-examples:cloudflare": "node scripts/convert-examples.js cloudflare",
+    "convert-examples:nextjs": "node scripts/convert-examples.js nextjs", 
+    "convert-examples:lambda-edge": "node scripts/convert-examples.js lambda-edge",
+    "convert-examples:quickjs": "node scripts/convert-examples.js quickjs"
   },
   "keywords": [
     "nginx",

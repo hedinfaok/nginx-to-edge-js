@@ -51,6 +51,37 @@ npm run cli generate cloudflare <nginx-file> --output my-worker.js
 npm run cli --help
 ```
 
+## Batch Conversion
+
+Convert all example configurations to edge functions for all platforms:
+
+```bash
+# Convert all examples to all platforms (CloudFlare, Next.js, Lambda@Edge, QuickJS)
+npm run convert-examples
+
+# Convert all examples to specific platform
+npm run convert-examples:cloudflare     # Generate CloudFlare Workers
+npm run convert-examples:nextjs         # Generate Next.js Middleware  
+npm run convert-examples:lambda-edge    # Generate AWS Lambda@Edge
+npm run convert-examples:quickjs        # Generate QuickJS
+```
+
+**Output Structure:**
+```
+out/
+├── cloudflare/           # CloudFlare Workers (.js files)
+├── nextjs/              # Next.js Middleware (.ts files)
+├── lambda-edge/         # AWS Lambda@Edge (.js files)
+└── quickjs/             # QuickJS (.js files)
+```
+
+**Features:**
+- ✅ Processes all 20 example configurations automatically
+- ✅ Generates organized output directories by platform
+- ✅ Detailed progress reporting and error handling  
+- ✅ Platform-specific file extensions (.js/.ts)
+- ✅ Comprehensive success/failure summary
+
 ## Architecture
 
 ### System Components
