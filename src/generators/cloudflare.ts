@@ -48,7 +48,16 @@ export class CloudFlareGenerator extends BaseGenerator {
   }
 
   private generateWorkerCode(): string {
-    const code: string[] = [
+    const code: string[] = [];
+    
+    // Generate map functions if they exist
+    const mapFunctions = this.generateMapFunctions();
+    if (mapFunctions.length > 0) {
+      code.push('// Map functions');
+      code.push(...mapFunctions);
+    }
+    
+    code.push(
       'addEventListener("fetch", event => {',
       '  event.respondWith(handleRequest(event.request));',
       '});',
@@ -64,7 +73,7 @@ export class CloudFlareGenerator extends BaseGenerator {
       '}',
       '',
       ...this.generateHelperFunctions()
-    ];
+    );
 
     return code.join('\n');
   }
@@ -200,7 +209,14 @@ export class CloudFlareGenerator extends BaseGenerator {
     }
 
     // Default action
-    actions.push(`${indent}return new Response("Location matched but no action defined", { status: 500 });`);
+    const customHeaders = this.generateCustomHeaders(location, indent);
+    if (customHeaders.length > 0) {
+      actions.push(`${indent}const responseHeaders = new Headers();`);
+      customHeaders.forEach(header => actions.push(header));
+      actions.push(`${indent}return new Response("Location matched but no action defined", { status: 500, headers: responseHeaders });`);
+    } else {
+      actions.push(`${indent}return new Response("Location matched but no action defined", { status: 500 });`);
+    }
     return actions;
   }
 
@@ -230,6 +246,21 @@ export class CloudFlareGenerator extends BaseGenerator {
     return headers;
   }
 
+  private generateCustomHeaders(location: LocationBlock, indent: string): string[] {
+    const headers: string[] = [];
+    
+    // Generate add_header directives
+    if (location.directives.add_header) {
+      Object.entries(location.directives.add_header).forEach(([header, value]) => {
+        // Handle nginx variables in header values
+        const processedValue = this.processNginxVariables(value);
+        headers.push(`${indent}responseHeaders.set("${header}", ${processedValue});`);
+      });
+    }
+    
+    return headers;
+  }
+
   private processNginxVariables(value: string): string {
     // Handle empty string case
     if (!value || value === '""' || value === "''") {
@@ -253,13 +284,156 @@ export class CloudFlareGenerator extends BaseGenerator {
       .replace(/\$proxy_add_x_forwarded_for/g, 'request.headers.get("X-Forwarded-For") ? request.headers.get("X-Forwarded-For") + ", " + (request.headers.get("CF-Connecting-IP") || "") : (request.headers.get("CF-Connecting-IP") || "")')
       .replace(/\$msec/g, 'Date.now().toString()');
     
+    // Handle map variables
+    if (this.config.maps) {
+      for (const mapDirective of this.config.maps) {
+        // Create a regex pattern that matches the exact map variable
+        const outputVar = mapDirective.output_variable; // e.g., "$realip"
+        const escapedVar = outputVar.replace(/\$/g, '\\$'); // e.g., "\\$realip"
+        const mapVarPattern = new RegExp(escapedVar, 'g');
+        const functionName = this.getMapFunctionName(mapDirective.output_variable);
+        const inputValue = this.getMapInputValue(mapDirective.input_variable);
+        processed = processed.replace(mapVarPattern, `${functionName}(${inputValue})`);
+      }
+    }
+    
     // If the value contains variables, it's already a JavaScript expression
-    if (processed.includes('request.headers.get') || processed.includes('url.')) {
+    if (processed.includes('request.headers.get') || processed.includes('url.') || processed.includes('(')) {
       return processed;
     }
     
     // If no variables, wrap in quotes
     return `"${processed}"`;
+  }
+
+  private generateMapFunctions(): string[] {
+    if (!this.config.maps || this.config.maps.length === 0) {
+      return [];
+    }
+
+    const functions: string[] = [];
+
+    for (const mapDirective of this.config.maps) {
+      const functionName = this.getMapFunctionName(mapDirective.output_variable);
+      const inputParam = this.getMapInputParameter(mapDirective.input_variable);
+      
+      functions.push(`// Map function for ${mapDirective.output_variable}`);
+      functions.push(`function ${functionName}(${inputParam}) {`);
+      
+      // Generate mapping logic
+      for (const mapping of mapDirective.mappings) {
+        if (mapping.is_regex) {
+          if (mapping.capture_groups && mapping.capture_groups.length > 0) {
+            // Regex with capture groups
+            functions.push(`  const match = ${inputParam}?.match(/${mapping.pattern}/);`);
+            functions.push(`  if (match) {`);
+            functions.push(`    return ${this.processMapValue(mapping.value)};`);
+            functions.push(`  }`);
+          } else {
+            // Simple regex match
+            functions.push(`  if (${inputParam}?.match(/${mapping.pattern}/)) {`);
+            functions.push(`    return ${this.processMapValue(mapping.value)};`);
+            functions.push(`  }`);
+          }
+        } else {
+          // Exact string match
+          functions.push(`  if (${inputParam} === "${mapping.pattern}") {`);
+          functions.push(`    return ${this.processMapValue(mapping.value)};`);
+          functions.push(`  }`);
+        }
+      }
+      
+      // Default value
+      if (mapDirective.default_value) {
+        functions.push(`  return ${this.processMapValue(mapDirective.default_value)};`);
+      } else {
+        functions.push(`  return "";`);
+      }
+      
+      functions.push(`}`);
+      functions.push('');
+    }
+
+    return functions;
+  }
+
+  private getMapFunctionName(outputVariable: string): string {
+    // Convert $realip to getRealip, $country_path to getCountryPath
+    const varName = outputVariable.replace(/^\$/, '');
+    const camelCase = varName.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    return `get${camelCase.charAt(0).toUpperCase() + camelCase.slice(1)}`;
+  }
+
+  private getMapInputParameter(inputVariable: string): string {
+    // Convert nginx variables to function parameters
+    if (inputVariable === '$http_x_forwarded_for') {
+      return 'xForwardedFor';
+    } else if (inputVariable === '$http_cloudfront_viewer_country') {
+      return 'viewerCountry';
+    } else if (inputVariable === '$request_uri') {
+      return 'requestUri';
+    } else if (inputVariable === '$uri') {
+      return 'uri';
+    } else if (inputVariable.startsWith('$http_')) {
+      const headerName = inputVariable.replace('$http_', '').replace(/_/g, '-');
+      return `header_${headerName.replace(/-/g, '_')}`;
+    } else {
+      return inputVariable.replace(/^\$/, '').replace(/_/g, '');
+    }
+  }
+
+  private processMapValue(value: string): string {
+    // Handle capture group references like $1, $2, etc first
+    if (value.includes('$') && /\$\d+/.test(value)) {
+      let processed = value;
+      
+      // Replace $1, $2, etc with match[1], match[2], etc in template literals
+      // Convert "/modern/$1" to `"/modern/${match[1]}"`
+      processed = processed.replace(/\$(\d+)/g, '${match[$1]}');
+      
+      // If it has mixed content, use template literal
+      if (processed.includes('${')) {
+        return `\`${processed}\``;
+      }
+      
+      // If it's just a capture group, return the match directly
+      if (processed === '${match[1]}') {
+        return 'match[1]';
+      }
+      
+      return processed;
+    }
+    
+    // Process other nginx variables 
+    if (value.includes('$')) {
+      const processed = this.processNginxVariables(value);
+      // If it contains JS expressions, return as-is
+      if (processed.includes('request.headers.get') || processed.includes('url.')) {
+        return processed;
+      }
+    }
+    
+    // Regular string value
+    return `"${value}"`;
+  }
+
+  private getMapInputValue(inputVariable: string): string {
+    // Convert nginx input variables to actual runtime values
+    if (inputVariable === '$http_x_forwarded_for') {
+      return 'request.headers.get("X-Forwarded-For") || ""';
+    } else if (inputVariable === '$http_cloudfront_viewer_country') {
+      return 'request.headers.get("CloudFront-Viewer-Country") || ""';
+    } else if (inputVariable === '$request_uri') {
+      return 'url.pathname + url.search';
+    } else if (inputVariable === '$uri') {
+      return 'url.pathname';
+    } else if (inputVariable.startsWith('$http_')) {
+      const headerName = inputVariable.replace('$http_', '').replace(/_/g, '-');
+      return `request.headers.get("${headerName}") || ""`;
+    } else {
+      // Fallback to standard nginx variable processing
+      return this.processNginxVariables(inputVariable).replace(/"/g, '');
+    }
   }
 
   private generateHelperFunctions(): string[] {

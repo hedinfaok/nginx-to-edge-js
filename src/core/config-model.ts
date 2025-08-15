@@ -7,7 +7,22 @@
 export interface NginxConfig {
   servers: ServerBlock[];
   upstreams?: UpstreamBlock[];
+  maps?: MapDirective[];
   global?: GlobalDirectives;
+}
+
+export interface MapDirective {
+  input_variable: string;    // e.g., "$http_x_forwarded_for"
+  output_variable: string;   // e.g., "$realip" 
+  mappings: MapRule[];
+  default_value?: string;
+}
+
+export interface MapRule {
+  pattern: string;           // e.g., "~^(\d+\.\d+\.\d+\.\d+)" or "US"
+  value: string;            // e.g., "$1" or "us/"
+  is_regex: boolean;        // true for patterns starting with ~
+  capture_groups?: string[]; // extracted capture group references like $1, $2
 }
 
 export interface ServerBlock {

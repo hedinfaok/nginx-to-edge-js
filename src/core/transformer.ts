@@ -3,7 +3,7 @@
  * to the unified configuration model.
  */
 
-import { ParsedNginxConfig, NginxConfig, ServerBlock, LocationBlock } from './config-model.js';
+import { NginxConfig, ServerBlock, LocationBlock, ParsedNginxConfig, MapDirective, MapRule } from './config-model.js';
 
 /**
  * Convert crossplane parse result to ParsedNginxConfig
@@ -26,6 +26,12 @@ export function convertCrossplaneToConfig(parseResult: any): ParsedNginxConfig {
               config.servers.push(server);
             } else if (httpDirective.directive === 'upstream') {
               // Handle upstream blocks later if needed
+            } else if (httpDirective.directive === 'map') {
+              const mapDirective = convertMapDirective(httpDirective);
+              if (!config.maps) {
+                config.maps = [];
+              }
+              config.maps.push(mapDirective);
             }
           }
         } else if (directive.directive === 'server') {
@@ -139,4 +145,45 @@ export function convertLocationBlock(directive: any): LocationBlock {
   }
 
   return location;
+}
+
+/**
+ * Convert a map directive from crossplane to MapDirective
+ */
+export function convertMapDirective(directive: any): MapDirective {
+  // map directive format: map $input_var $output_var { ... }
+  const inputVariable = directive.args[0];
+  const outputVariable = directive.args[1];
+  
+  const mapDirective: MapDirective = {
+    input_variable: inputVariable,
+    output_variable: outputVariable,
+    mappings: []
+  };
+
+  if (directive.block) {
+    for (const mapRule of directive.block) {
+      const pattern = mapRule.directive;
+      const value = mapRule.args[0];
+      
+      if (pattern === 'default') {
+        mapDirective.default_value = value;
+      } else {
+        const isRegex = pattern.startsWith('~');
+        const cleanPattern = isRegex ? pattern.substring(1) : pattern;
+        
+        // Extract capture groups from value (e.g., $1, $2)
+        const captureGroups = value.match(/\$\d+/g) || [];
+        
+        mapDirective.mappings.push({
+          pattern: cleanPattern,
+          value: value,
+          is_regex: isRegex,
+          capture_groups: captureGroups
+        });
+      }
+    }
+  }
+
+  return mapDirective;
 }
