@@ -201,6 +201,21 @@ export class CloudFlareGenerator extends BaseGenerator {
       return actions;
     }
 
+    // Handle if directives (conditional logic)
+    if (location.directives.if) {
+      location.directives.if.forEach(conditionalDirective => {
+        const condition = this.convertNginxCondition(conditionalDirective.condition);
+        actions.push(`${indent}// Conditional: ${conditionalDirective.condition}`);
+        actions.push(`${indent}if (${condition}) {`);
+        
+        // Generate actions for the conditional block
+        const conditionalActions = this.generateConditionalActions(conditionalDirective, indent + '  ');
+        actions.push(...conditionalActions);
+        
+        actions.push(`${indent}}`);
+      });
+    }
+
     // Handle static files
     if (this.isStaticLocation(location)) {
       actions.push(`${indent}// Static file serving - requires CloudFlare Pages or R2`);
@@ -244,6 +259,109 @@ export class CloudFlareGenerator extends BaseGenerator {
     }
     
     return headers;
+  }
+
+  private convertNginxCondition(condition: string): string {
+    // Convert nginx condition syntax to JavaScript
+    // Examples:
+    // "$custom_redirect != \"\"" -> "getCustomRedirect(url.pathname + url.search) !== \"\""
+    // "$uri ~ \\.json$" -> "url.pathname.match(/\\.json$/)"
+    
+    let jsCondition = condition;
+    
+    // Handle map variables first
+    if (this.config.maps) {
+      for (const mapDirective of this.config.maps) {
+        const mapVarPattern = new RegExp(`\\${mapDirective.output_variable.replace('$', '\\$')}`, 'g');
+        const functionName = this.getMapFunctionName(mapDirective.output_variable);
+        const inputValue = this.getMapInputValue(mapDirective.input_variable);
+        jsCondition = jsCondition.replace(mapVarPattern, `${functionName}(${inputValue})`);
+      }
+    }
+    
+    // Handle other nginx variables
+    jsCondition = this.processNginxVariables(jsCondition);
+    
+    // Convert nginx operators to JavaScript (be careful about order!)
+    jsCondition = jsCondition
+      .replace(/\s+!==\s+/g, ' !== ')
+      .replace(/\s+!=\s+/g, ' !== ')
+      .replace(/\s+==\s+/g, ' === ')
+      .replace(/\s+=\s+/g, ' === ')
+      .replace(/\s+~\s+/g, '.match(/')
+      .replace(/\s+!~\s+/g, '!.match(/');
+    
+    // Handle regex patterns
+    if (jsCondition.includes('.match(/')) {
+      // Convert "value.match(/pattern" to "value.match(/pattern/)"
+      jsCondition = jsCondition.replace(/\.match\(\/([^)]+)/g, '.match(/$1/)');
+    }
+    
+    // Fix empty string comparison (the empty string at the end gets lost)
+    if (jsCondition.endsWith(' !== ') || jsCondition.endsWith(' === ')) {
+      jsCondition += '""';
+    }
+    
+    return jsCondition;
+  }
+
+  private generateConditionalActions(conditionalDirective: any, indent: string): string[] {
+    const actions: string[] = [];
+    const directives = conditionalDirective.directives;
+    
+    // Handle return directive in if block
+    if (directives.return) {
+      const returnDir = directives.return;
+      
+      // Generate custom headers if any (simplified - just for add_header in conditional)
+      const customHeaders: string[] = [];
+      if (directives.add_header) {
+        customHeaders.push(`${indent}const responseHeaders = new Headers();`);
+        Object.entries(directives.add_header).forEach(([header, value]) => {
+          const processedValue = this.processNginxVariables(value as string);
+          customHeaders.push(`${indent}responseHeaders.set("${header}", ${processedValue});`);
+        });
+      }
+      
+      if (returnDir.code >= 300 && returnDir.code < 400) {
+        // Redirect
+        const redirectUrl = this.processNginxVariables(returnDir.url || returnDir.text || '/');
+        
+        if (customHeaders.length > 0) {
+          actions.push(...customHeaders);
+          actions.push(`${indent}return Response.redirect(${redirectUrl}, { status: ${returnDir.code}, headers: responseHeaders });`);
+        } else {
+          actions.push(`${indent}return Response.redirect(${redirectUrl}, ${returnDir.code});`);
+        }
+      } else {
+        // Non-redirect return
+        const responseText = returnDir.text ? this.processNginxVariables(returnDir.text) : '""';
+        
+        if (customHeaders.length > 0) {
+          actions.push(...customHeaders);
+          actions.push(`${indent}return new Response(${responseText}, { status: ${returnDir.code}, headers: responseHeaders });`);
+        } else {
+          actions.push(`${indent}return new Response(${responseText}, { status: ${returnDir.code} });`);
+        }
+      }
+    }
+    
+    // Handle other directives (set, add_header, proxy_pass, etc.)
+    if (directives.set) {
+      Object.entries(directives.set).forEach(([varName, value]) => {
+        const processedValue = this.processNginxVariables(value as string);
+        actions.push(`${indent}// Set variable: $${varName} = ${value}`);
+        actions.push(`${indent}const ${varName} = ${processedValue};`);
+      });
+    }
+    
+    if (directives.proxy_pass) {
+      const backend = directives.proxy_pass;
+      actions.push(`${indent}// Conditional proxy to: ${backend}`);
+      actions.push(`${indent}return await proxyRequest(request, "${backend}", url);`);
+    }
+    
+    return actions;
   }
 
   private generateCustomHeaders(location: LocationBlock, indent: string): string[] {

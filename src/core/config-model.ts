@@ -72,7 +72,8 @@ export interface LocationDirectives {
   alias?: string;
   deny?: string[];
   allow?: string[];
-  [key: string]: string | number | boolean | string[] | RewriteRule[] | ReturnDirective | Record<string, string> | undefined;
+  if?: ConditionalDirective[];
+  [key: string]: string | number | boolean | string[] | RewriteRule[] | ReturnDirective | Record<string, string> | ConditionalDirective[] | undefined;
 }
 
 export interface RewriteRule {
@@ -82,6 +83,11 @@ export interface RewriteRule {
 }
 
 export type RewriteFlag = 'last' | 'break' | 'redirect' | 'permanent';
+
+export interface ConditionalDirective {
+  condition: string;
+  directives: LocationDirectives;
+}
 
 export interface ReturnDirective {
   code: number;

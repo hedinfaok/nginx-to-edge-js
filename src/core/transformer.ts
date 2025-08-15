@@ -3,7 +3,7 @@
  * to the unified configuration model.
  */
 
-import { NginxConfig, ServerBlock, LocationBlock, ParsedNginxConfig, MapDirective, MapRule } from './config-model.js';
+import { NginxConfig, ServerBlock, LocationBlock, ParsedNginxConfig, MapDirective, MapRule, ConditionalDirective } from './config-model.js';
 
 /**
  * Convert crossplane parse result to ParsedNginxConfig
@@ -140,6 +140,12 @@ export function convertLocationBlock(directive: any): LocationBlock {
           const varName = locationDirective.args[0].replace(/^\$/, ''); // Remove leading $
           location.directives.set[varName] = locationDirective.args[1];
           break;
+        case 'if':
+          if (!location.directives.if) {
+            location.directives.if = [];
+          }
+          location.directives.if.push(convertIfDirective(locationDirective));
+          break;
       }
     }
   }
@@ -186,4 +192,53 @@ export function convertMapDirective(directive: any): MapDirective {
   }
 
   return mapDirective;
+}
+
+export function convertIfDirective(directive: any): ConditionalDirective {
+  // nginx if directive structure: if (condition) { ... }
+  // args contains the condition parts (e.g., ["$custom_redirect", "!=", ""])
+  const condition = directive.args.join(' ');
+  
+  // Create a new location directives object for the conditional block
+  const conditionalDirectives: any = {};
+  
+  // Process the directives inside the if block
+  if (directive.block) {
+    for (const blockDirective of directive.block) {
+      switch (blockDirective.directive) {
+        case 'return':
+          if (blockDirective.args.length >= 1) {
+            const code = parseInt(blockDirective.args[0]);
+            conditionalDirectives.return = {
+              code: code,
+              url: blockDirective.args[1] || undefined,
+              text: blockDirective.args[1] || undefined
+            };
+          }
+          break;
+        case 'add_header':
+          if (!conditionalDirectives.add_header) {
+            conditionalDirectives.add_header = {};
+          }
+          conditionalDirectives.add_header[blockDirective.args[0]] = blockDirective.args[1];
+          break;
+        case 'set':
+          if (!conditionalDirectives.set) {
+            conditionalDirectives.set = {};
+          }
+          const varName = blockDirective.args[0].replace(/^\$/, '');
+          conditionalDirectives.set[varName] = blockDirective.args[1];
+          break;
+        case 'proxy_pass':
+          conditionalDirectives.proxy_pass = blockDirective.args[0];
+          break;
+        // Add more directive types as needed
+      }
+    }
+  }
+  
+  return {
+    condition: condition,
+    directives: conditionalDirectives
+  };
 }
