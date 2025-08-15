@@ -32,6 +32,34 @@ export function convertCrossplaneToConfig(parseResult: any): ParsedNginxConfig {
                 config.maps = [];
               }
               config.maps.push(mapDirective);
+            } else {
+              // Handle global directives (default_type, sendfile, gzip, etc.)
+              switch (httpDirective.directive) {
+                case 'default_type':
+                  config.global!.default_type = httpDirective.args[0];
+                  break;
+                case 'sendfile':
+                  config.global!.sendfile = httpDirective.args[0] === 'on';
+                  break;
+                case 'tcp_nopush':
+                  config.global!.tcp_nopush = httpDirective.args[0] === 'on';
+                  break;
+                case 'tcp_nodelay':
+                  config.global!.tcp_nodelay = httpDirective.args[0] === 'on';
+                  break;
+                case 'gzip':
+                  config.global!.gzip = httpDirective.args[0] === 'on';
+                  break;
+                case 'gzip_comp_level':
+                  config.global!.gzip_comp_level = parseInt(httpDirective.args[0]);
+                  break;
+                case 'gzip_types':
+                  config.global!.gzip_types = httpDirective.args;
+                  break;
+                case 'client_max_body_size':
+                  config.global!.client_max_body_size = httpDirective.args[0];
+                  break;
+              }
             }
           }
         } else if (directive.directive === 'server') {
@@ -72,6 +100,9 @@ export function convertServerBlock(directive: any): ServerBlock {
         }
         case 'server_name':
           server.server_name = serverDirective.args;
+          break;
+        case 'index':
+          server.index = serverDirective.args;
           break;
         case 'location': {
           const location = convertLocationBlock(serverDirective);
@@ -145,6 +176,21 @@ export function convertLocationBlock(directive: any): LocationBlock {
             location.directives.if = [];
           }
           location.directives.if.push(convertIfDirective(locationDirective));
+          break;
+        case 'index':
+          location.directives.index = locationDirective.args.join(' ');
+          break;
+        case 'alias':
+          location.directives.alias = locationDirective.args[0];
+          break;
+        case 'default_type':
+          location.directives.default_type = locationDirective.args[0];
+          break;
+        case 'try_files':
+          if (!location.directives.try_files) {
+            location.directives.try_files = [];
+          }
+          location.directives.try_files = locationDirective.args;
           break;
       }
     }

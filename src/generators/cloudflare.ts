@@ -218,8 +218,8 @@ export class CloudFlareGenerator extends BaseGenerator {
 
     // Handle static files
     if (this.isStaticLocation(location)) {
-      actions.push(`${indent}// Static file serving - requires CloudFlare Pages or R2`);
-      actions.push(`${indent}return new Response("Static file serving not implemented", { status: 501 });`);
+      const staticActions = this.generateStaticFileActions(location, indent);
+      actions.push(...staticActions);
       return actions;
     }
 
@@ -554,6 +554,72 @@ export class CloudFlareGenerator extends BaseGenerator {
     }
   }
 
+  private generateStaticFileActions(location: LocationBlock, indent: string): string[] {
+    const actions: string[] = [];
+    const directives = location.directives;
+    
+    actions.push(`${indent}// Static file serving`);
+    
+    // Handle try_files directive
+    if (directives.try_files) {
+      actions.push(`${indent}// try_files: ${directives.try_files.join(' ')}`);
+      actions.push(`${indent}const tryFiles = ${JSON.stringify(directives.try_files)};`);
+      actions.push(`${indent}for (const tryFile of tryFiles) {`);
+      actions.push(`${indent}  if (tryFile === '$uri') {`);
+      actions.push(`${indent}    // Try the requested URI`);
+      actions.push(`${indent}    const staticResponse = await tryStaticFile(url.pathname);`);
+      actions.push(`${indent}    if (staticResponse) return staticResponse;`);
+      actions.push(`${indent}  } else if (tryFile === '$uri/') {`);
+      actions.push(`${indent}    // Try the URI with trailing slash`);
+      actions.push(`${indent}    const staticResponse = await tryStaticFile(url.pathname + '/');`);
+      actions.push(`${indent}    if (staticResponse) return staticResponse;`);
+      actions.push(`${indent}  } else if (!tryFile.startsWith('$')) {`);
+      actions.push(`${indent}    // Try the fallback file`);
+      actions.push(`${indent}    const staticResponse = await tryStaticFile(tryFile);`);
+      actions.push(`${indent}    if (staticResponse) return staticResponse;`);
+      actions.push(`${indent}  }`);
+      actions.push(`${indent}}`);
+    }
+    
+    // Handle alias directive
+    if (directives.alias) {
+      actions.push(`${indent}// alias: ${directives.alias}`);
+      actions.push(`${indent}const aliasPath = "${directives.alias}" + url.pathname.substring("${location.path}".length);`);
+      actions.push(`${indent}const aliasResponse = await tryStaticFile(aliasPath);`);
+      actions.push(`${indent}if (aliasResponse) return aliasResponse;`);
+    }
+    
+    // Handle root directive (fallback)
+    if (directives.root) {
+      actions.push(`${indent}// root: ${directives.root}`);
+      actions.push(`${indent}const rootPath = "${directives.root}" + url.pathname;`);
+      actions.push(`${indent}const rootResponse = await tryStaticFile(rootPath);`);
+      actions.push(`${indent}if (rootResponse) return rootResponse;`);
+    }
+    
+    // Handle default_type
+    const defaultType = directives.default_type || 'application/octet-stream';
+    actions.push(`${indent}// Default content type: ${defaultType}`);
+    
+    // Handle index files
+    if (directives.index) {
+      actions.push(`${indent}// index files: ${directives.index}`);
+      actions.push(`${indent}if (url.pathname.endsWith('/')) {`);
+      actions.push(`${indent}  const indexFiles = ${JSON.stringify(directives.index.split(' '))};`);
+      actions.push(`${indent}  for (const indexFile of indexFiles) {`);
+      actions.push(`${indent}    const indexPath = url.pathname + indexFile;`);
+      actions.push(`${indent}    const indexResponse = await tryStaticFile(indexPath);`);
+      actions.push(`${indent}    if (indexResponse) return indexResponse;`);
+      actions.push(`${indent}  }`);
+      actions.push(`${indent}}`);
+    }
+    
+    // Fallback - 404
+    actions.push(`${indent}return new Response("File not found", { status: 404 });`);
+    
+    return actions;
+  }
+
   private generateHelperFunctions(): string[] {
     return [
       '// Helper function to proxy requests',
@@ -597,6 +663,35 @@ export class CloudFlareGenerator extends BaseGenerator {
       '    statusText: response.statusText,',
       '    headers: responseHeaders',
       '  });',
+      '}',
+      '',
+      '// Helper function to try serving static files',
+      '// Note: This requires CloudFlare Pages for static assets or R2 for object storage',
+      'async function tryStaticFile(path) {',
+      '  try {',
+      '    // For CloudFlare Pages: files are automatically available',
+      '    // For CloudFlare Workers: you would need to integrate with R2 or KV',
+      '    // This is a placeholder - implement based on your static file strategy',
+      '    ',
+      '    // Example for CloudFlare Pages (uncomment and modify as needed):',
+      '    // const response = await fetch(new URL(path, "https://your-pages-domain.pages.dev"));',
+      '    // if (response.ok) return response;',
+      '    ',
+      '    // Example for R2 (uncomment and modify as needed):',
+      '    // const object = await env.BUCKET.get(path.startsWith("/") ? path.slice(1) : path);',
+      '    // if (object) {',
+      '    //   return new Response(object.body, {',
+      '    //     headers: {',
+      '    //       "Content-Type": object.httpMetadata?.contentType || "application/octet-stream"',
+      '    //     }',
+      '    //   });',
+      '    // }',
+      '    ',
+      '    return null; // File not found',
+      '  } catch (error) {',
+      '    console.error("Error serving static file:", error);',
+      '    return null;',
+      '  }',
       '}'
     ];
   }

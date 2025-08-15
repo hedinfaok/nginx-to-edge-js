@@ -26,11 +26,14 @@ export interface MapRule {
 }
 
 export interface ServerBlock {
-  listen: ListenDirective[];
+  listen: { port: number; ssl?: boolean }[];
   server_name?: string[];
-  ssl?: SSLConfig;
+  index?: string[];
+  ssl?: {
+    certificate?: string;
+    certificate_key?: string;
+  };
   locations: LocationBlock[];
-  directives?: Record<string, string | number | boolean | string[]>;
 }
 
 export interface ListenDirective {
@@ -73,6 +76,7 @@ export interface LocationDirectives {
   deny?: string[];
   allow?: string[];
   if?: ConditionalDirective[];
+  default_type?: string;
   [key: string]: string | number | boolean | string[] | RewriteRule[] | ReturnDirective | Record<string, string> | ConditionalDirective[] | undefined;
 }
 
@@ -125,6 +129,7 @@ export interface GlobalDirectives {
   gzip_comp_level?: number;
   gzip_types?: string[];
   client_max_body_size?: string;
+  default_type?: string;
   [key: string]: string | number | boolean | string[] | undefined;
 }
 
