@@ -237,7 +237,7 @@ export class LambdaEdgeGenerator extends BaseGenerator {
       handlers.push(`${indent}};`);
     } catch (error) {
       // Fallback for invalid URLs
-      handlers.push(`${indent}// Note: Could not parse proxy URL: ${proxyPass}`);
+      handlers.push(`${indent}// Note: Could not parse proxy URL: ${proxyPass} (${error instanceof Error ? error.message : 'invalid format'})`);
       handlers.push(`${indent}request.origin = {`);
       handlers.push(`${indent}  custom: {`);
       handlers.push(`${indent}    domainName: 'backend.example.com', // TODO: Configure actual backend`);
