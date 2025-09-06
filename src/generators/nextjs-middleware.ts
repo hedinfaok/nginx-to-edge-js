@@ -331,7 +331,7 @@ export class NextJSGenerator extends BaseGenerator {
     return headers;
   }
 
-  private processNginxVariables(value: string): string {
+  private processNginxVariables(value: string, processedVars = new Set<string>()): string {
     // Convert nginx variables to JavaScript expressions
     let processedValue = value;
     
@@ -352,11 +352,23 @@ export class NextJSGenerator extends BaseGenerator {
     if (this.config.maps) {
       this.config.maps.forEach(mapDirective => {
         const varName = mapDirective.output_variable.replace('$', '');
-        const functionName = this.getFunctionNameFromVariable(varName);
-        processedValue = processedValue.replace(
-          new RegExp(`\\$${varName}`, 'g'),
-          `${functionName}(${this.processNginxVariables(mapDirective.input_variable)})`
-        );
+        
+        // Prevent infinite recursion by tracking processed variables
+        if (!processedVars.has(varName)) {
+          processedVars.add(varName);
+          const functionName = this.getFunctionNameFromVariable(varName);
+          
+          // Process input variable only if it's different and not already processed
+          let inputProcessed = mapDirective.input_variable;
+          if (mapDirective.input_variable !== mapDirective.output_variable) {
+            inputProcessed = this.processNginxVariables(mapDirective.input_variable, processedVars);
+          }
+          
+          processedValue = processedValue.replace(
+            new RegExp(`\\$${varName}`, 'g'),
+            `${functionName}(${inputProcessed})`
+          );
+        }
       });
     }
     

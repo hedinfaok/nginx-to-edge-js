@@ -203,16 +203,50 @@ export class LambdaEdgeGenerator extends BaseGenerator {
     handlers.push(`${indent}// Proxy to: ${proxyPass}`);
     handlers.push(`${indent}// Modify origin request`);
     
-    // Set upstream host
-    const upstreamUrl = new URL(proxyPass.replace(/\$.*/, ''));
-    handlers.push(`${indent}request.origin = {`);
-    handlers.push(`${indent}  custom: {`);
-    handlers.push(`${indent}    domainName: '${upstreamUrl.hostname}',`);
-    handlers.push(`${indent}    port: ${upstreamUrl.port || (upstreamUrl.protocol === 'https:' ? 443 : 80)},`);
-    handlers.push(`${indent}    protocol: '${upstreamUrl.protocol.replace(':', '')}',`);
-    handlers.push(`${indent}    path: '${upstreamUrl.pathname}'`);
-    handlers.push(`${indent}  }`);
-    handlers.push(`${indent}};`);
+    // Set upstream host - handle various proxy_pass formats
+    try {
+      // Clean the URL for parsing - handle upstream names and variables
+      let cleanUrl = proxyPass;
+      
+      // If it's an upstream name (like "http://backend"), use a placeholder domain
+      if (/^https?:\/\/[a-zA-Z0-9_-]+$/.test(cleanUrl)) {
+        cleanUrl = cleanUrl.replace(/^(https?:\/\/)([a-zA-Z0-9_-]+)$/, '$1$2.example.com');
+      }
+      
+      // Handle variables by replacing with placeholders
+      cleanUrl = cleanUrl.replace(/\$[a-zA-Z_][a-zA-Z0-9_]*/g, 'variable.example.com');
+      
+      const upstreamUrl = new URL(cleanUrl);
+      const isUpstream = /^https?:\/\/[a-zA-Z0-9_-]+$/.test(proxyPass);
+      
+      handlers.push(`${indent}request.origin = {`);
+      handlers.push(`${indent}  custom: {`);
+      
+      if (isUpstream) {
+        // Handle upstream reference
+        const upstreamName = proxyPass.replace(/^https?:\/\//, '');
+        handlers.push(`${indent}    domainName: '${upstreamName}.example.com', // TODO: Resolve upstream '${upstreamName}'`);
+      } else {
+        handlers.push(`${indent}    domainName: '${upstreamUrl.hostname}',`);
+      }
+      
+      handlers.push(`${indent}    port: ${upstreamUrl.port || (upstreamUrl.protocol === 'https:' ? 443 : 80)},`);
+      handlers.push(`${indent}    protocol: '${upstreamUrl.protocol.replace(':', '')}',`);
+      handlers.push(`${indent}    path: '${upstreamUrl.pathname}'`);
+      handlers.push(`${indent}  }`);
+      handlers.push(`${indent}};`);
+    } catch (error) {
+      // Fallback for invalid URLs
+      handlers.push(`${indent}// Note: Could not parse proxy URL: ${proxyPass}`);
+      handlers.push(`${indent}request.origin = {`);
+      handlers.push(`${indent}  custom: {`);
+      handlers.push(`${indent}    domainName: 'backend.example.com', // TODO: Configure actual backend`);
+      handlers.push(`${indent}    port: 80,`);
+      handlers.push(`${indent}    protocol: 'http',`);
+      handlers.push(`${indent}    path: '/'`);
+      handlers.push(`${indent}  }`);
+      handlers.push(`${indent}};`);
+    }
 
     // Handle proxy headers
     if (location.directives.proxy_set_header) {
