@@ -62,10 +62,11 @@ The nginx-to-edge-js project is designed as a modular system using nginx Inc.'s 
 - Maps nginx routing to Next.js patterns
 - Supports rewrites, redirects, and headers
 
-**Lambda@Edge Generator** (`lambda-edge.ts`) *[Planned]*
-- Will generate AWS Lambda@Edge functions
-- Maps nginx to CloudFront behaviors
-- Handles origin/viewer request/response functions
+**Lambda@Edge Generator** (`lambda-edge.ts`)
+- Generates AWS Lambda@Edge functions for CloudFront
+- Maps nginx directives to CloudFront behaviors
+- Handles all 4 CloudFront event types (viewer-request, origin-request, origin-response, viewer-response)
+- Supports routing, redirects, proxy pass, and header manipulation
 
 ### 4. CLI Interface (`src/cli/`)
 
