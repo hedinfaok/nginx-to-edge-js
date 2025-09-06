@@ -4,9 +4,11 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+Convert nginx configurations to modern edge server JavaScript/TypeScript using nginx Inc.'s official crossplane parser.
+
 > **Project Background:** This project started as an exploration of a practical infrastructure challenge: automatically converting existing nginx configurations to modern edge computing platforms. Many organizations have substantial nginx configurations that represent years of refined routing, security, and performance logic. When migrating to edge platforms like CloudFlare Workers, AWS Lambda@Edge, or Next.js middleware, teams typically face manual translation work that's both time-consuming and prone to errors. This tool automates that conversion process using nginx Inc.'s official crossplane parser, ensuring compatibility with existing nginx syntax while generating production-ready JavaScript and TypeScript for edge platforms.
 
-Convert nginx configurations to modern edge server JavaScript/TypeScript using nginx Inc.'s official crossplane parser.
+**NOTE FROM THE HUMAN:** This is the result of a conversation with Github Copilot using Claude Sonnet 4. Look a the commit history. I let Copilot YOLO, push to main, use the `gh` cli to troubleshoot build issues. I gave it a rough outline of what I was looking for, asked for verification steps, etc. I didn't even setup my proper git config for my name and email. I hope you find this output useful or at least interesting.
 
 ## Quick Start
 
