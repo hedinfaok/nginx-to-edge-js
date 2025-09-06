@@ -89,21 +89,26 @@ jobs:
         echo "=== Testing crossplane integration ==="
         node dist/src/cli/index.js test
         echo "=== Testing nginx parsing ==="
-        node dist/src/cli/index.js parse examples/basic-reverse-proxy/nginx.conf
+        node dist/src/cli/index.js parse examples/basic-reverse-proxy.conf
         echo "=== Testing nginx validation ==="
-        node dist/src/cli/index.js validate examples/basic-reverse-proxy/nginx.conf
+        node dist/src/cli/index.js validate examples/basic-reverse-proxy.conf
         echo "=== Testing CloudFlare Workers generation ==="
-        node dist/src/cli/index.js generate cloudflare examples/basic-reverse-proxy/nginx.conf --output test-worker.js
+        node dist/src/cli/index.js generate cloudflare examples/basic-reverse-proxy.conf --output test-worker.js
         echo "=== Testing Next.js middleware generation ==="
-        node dist/src/cli/index.js generate nextjs examples/basic-reverse-proxy/nginx.conf --output test-middleware.ts
+        node dist/src/cli/index.js generate nextjs examples/basic-reverse-proxy.conf --output test-middleware.ts
         echo "=== Testing AWS Lambda@Edge generation ==="
-        node dist/src/cli/index.js generate lambda-edge examples/basic-reverse-proxy/nginx.conf --output test-lambda-edge.js
+        node dist/src/cli/index.js generate lambda-edge examples/basic-reverse-proxy.conf --output test-lambda-edge.js
         echo "=== Testing QuickJS generation ==="
-        node dist/src/cli/index.js generate quickjs examples/basic-reverse-proxy/nginx.conf --output test-quickjs.js
+        node dist/src/cli/index.js generate quickjs examples/basic-reverse-proxy.conf --output test-quickjs.js
         echo "=== Testing all platforms generation ==="
-        node dist/src/cli/index.js generate all examples/basic-reverse-proxy/nginx.conf --output-dir test-output
+        node dist/src/cli/index.js generate all examples/basic-reverse-proxy.conf --output-dir test-output
         echo "=== Verifying generated files ==="
         ls -la test-worker.js test-middleware.ts test-lambda-edge.js test-quickjs.js test-output/
+        echo "=== Testing batch conversion of all examples ==="
+        npm run convert-examples
+        echo "=== Verifying batch conversion output ==="
+        ls -la out/
+        find out/ -name "*.js" -o -name "*.ts" | wc -l
         echo "=== Testing npm link ==="
         npm link
         echo "=== Testing global CLI ==="
