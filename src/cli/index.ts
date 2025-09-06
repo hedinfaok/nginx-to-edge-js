@@ -6,7 +6,6 @@ import { CloudFlareGenerator } from '../generators/cloudflare.js';
 import { NextJSGenerator } from '../generators/nextjs-middleware.js';
 import { LambdaEdgeGenerator } from '../generators/lambda-edge.js';
 import { QuickJSGenerator } from '../generators/quickjs.js';
-import { ParsedNginxConfig, NginxConfig, ServerBlock, LocationBlock } from '../core/config-model.js';
 import { convertCrossplaneToConfig } from '../core/transformer.js';
 import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';

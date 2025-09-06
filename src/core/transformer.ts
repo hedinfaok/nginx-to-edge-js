@@ -3,7 +3,7 @@
  * to the unified configuration model.
  */
 
-import { NginxConfig, ServerBlock, LocationBlock, ParsedNginxConfig, MapDirective, MapRule, ConditionalDirective } from './config-model.js';
+import { NginxConfig, ServerBlock, LocationBlock, ParsedNginxConfig, MapDirective, ConditionalDirective } from './config-model.js';
 
 /**
  * Convert crossplane parse result to ParsedNginxConfig
@@ -162,7 +162,7 @@ export function convertLocationBlock(directive: any): LocationBlock {
           }
           location.directives.proxy_hide_header.push(locationDirective.args[0]);
           break;
-        case 'set':
+        case 'set': {
           if (!location.directives.set) {
             location.directives.set = {};
           }
@@ -171,6 +171,7 @@ export function convertLocationBlock(directive: any): LocationBlock {
           const varName = locationDirective.args[0].replace(/^\$/, ''); // Remove leading $
           location.directives.set[varName] = locationDirective.args[1];
           break;
+        }
         case 'if':
           if (!location.directives.if) {
             location.directives.if = [];
@@ -268,13 +269,14 @@ export function convertIfDirective(directive: any): ConditionalDirective {
           }
           conditionalDirectives.add_header[blockDirective.args[0]] = blockDirective.args[1];
           break;
-        case 'set':
+        case 'set': {
           if (!conditionalDirectives.set) {
             conditionalDirectives.set = {};
           }
           const varName = blockDirective.args[0].replace(/^\$/, '');
           conditionalDirectives.set[varName] = blockDirective.args[1];
           break;
+        }
         case 'proxy_pass':
           conditionalDirectives.proxy_pass = blockDirective.args[0];
           break;
