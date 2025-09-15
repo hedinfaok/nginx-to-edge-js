@@ -35,7 +35,7 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "commander": "^14.0.0"
+    "commander": "^14.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
